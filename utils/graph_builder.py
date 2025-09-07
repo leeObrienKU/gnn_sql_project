@@ -22,11 +22,8 @@ def standardize(df, columns):
 
 def get_latest_by(df, by_cols, sort_cols, keep_cols):
     """Get the latest record for each group, avoiding column duplication"""
-    # Make sure by_cols are not in keep_cols to avoid duplication
     keep_cols_unique = [col for col in keep_cols if col not in by_cols]
-    # Get the latest records
     latest = df.sort_values(sort_cols).groupby(by_cols)[keep_cols_unique].last()
-    # Only reset_index if we have by_cols that aren't in the result
     if any(col not in keep_cols_unique for col in by_cols):
         latest = latest.reset_index()
     return latest
@@ -39,10 +36,9 @@ class GraphBuilder:
 
     def prepare_features(self, employees, departments, dept_emp, titles, salaries, ref_date):
         """Prepare node features"""
-        print("Preparing features...")
+        print('Preparing features...')
         ref_date = pd.to_datetime(ref_date)
         
-        # Calculate employee features
         employees = employees.copy()
         employees['birth_date'] = pd.to_datetime(employees['birth_date'])
         employees['hire_date'] = pd.to_datetime(employees['hire_date'])
@@ -50,8 +46,7 @@ class GraphBuilder:
         employees['age_years'] = (ref_date - employees['birth_date']).dt.days / 365.25
         employees['tenure_years'] = (ref_date - employees['hire_date']).dt.days / 365.25
         
-        # Get latest salary
-        print("Processing salary data...")
+        print('Processing salary data...')
         latest_salary = get_latest_by(
             salaries,
             by_cols=['emp_no'],
@@ -59,8 +54,7 @@ class GraphBuilder:
             keep_cols=['emp_no', 'salary']
         ).rename(columns={'salary': 'curr_salary'})
         
-        # Get latest department
-        print("Processing department data...")
+        print('Processing department data...')
         latest_dept = get_latest_by(
             dept_emp,
             by_cols=['emp_no'],
@@ -68,8 +62,7 @@ class GraphBuilder:
             keep_cols=['emp_no', 'dept_no']
         )
         
-        # Get latest title
-        print("Processing title data...")
+        print('Processing title data...')
         latest_title = get_latest_by(
             titles,
             by_cols=['emp_no'],
@@ -78,8 +71,7 @@ class GraphBuilder:
         )
         latest_title['title_code'] = latest_title['title'].astype('category').cat.codes
         
-        # Calculate salary growth
-        print("Calculating salary growth...")
+        print('Calculating salary growth...')
         salary_growth = salaries.groupby('emp_no').agg(
             salary_growth=pd.NamedAgg(
                 column='salary',
@@ -87,20 +79,17 @@ class GraphBuilder:
             )
         ).reset_index()
         
-        # Assemble features
-        print("Assembling features...")
+        print('Assembling features...')
         emp_feat = employees[['emp_no', 'age_years', 'tenure_years']].copy()
         emp_feat = emp_feat.merge(latest_salary[['emp_no', 'curr_salary']], on='emp_no', how='left')
         emp_feat = emp_feat.merge(salary_growth, on='emp_no', how='left')
         emp_feat = emp_feat.merge(latest_title[['emp_no', 'title_code']], on='emp_no', how='left')
         emp_feat = emp_feat.merge(latest_dept[['emp_no', 'dept_no']], on='emp_no', how='left')
         
-        # Fill missing values
         numeric_cols = ['age_years', 'tenure_years', 'curr_salary', 'salary_growth', 'title_code']
         emp_feat[numeric_cols] = emp_feat[numeric_cols].fillna(0.0)
         
-        # Create department one-hot encoding
-        print("Creating department encoding...")
+        print('Creating department encoding...')
         dept_list = sorted(departments['dept_no'].unique())
         dept_to_idx = {dept: idx for idx, dept in enumerate(dept_list)}
         
@@ -109,45 +98,38 @@ class GraphBuilder:
             if pd.notna(dept) and dept in dept_to_idx:
                 dept_onehot[i, dept_to_idx[dept]] = 1.0
         
-        # Standardize numeric features
-        print("Standardizing features...")
+        print('Standardizing features...')
         emp_feat_std = standardize(emp_feat[numeric_cols], numeric_cols)
         
-        # Final features
         self.emp_features = np.hstack([
             emp_feat_std.values,
             dept_onehot
         ]).astype(np.float32)
         
-        # Department features (one-hot)
         self.dept_features = np.eye(len(dept_list), dtype=np.float32)
         
-        # Title features (one-hot)
         num_titles = len(latest_title['title_code'].unique())
         self.title_features = np.eye(num_titles, dtype=np.float32)
         
-        print("Feature preparation complete!")
-        return emp_feat['emp_no'].values  # Return emp_ids for edge creation
+        print('Feature preparation complete!')
+        return emp_feat['emp_no'].values
 
     def create_heterogeneous_graph(self, employees, departments, dept_emp, titles, salaries, cutoff_date: str) -> HeteroData:
         """Create heterogeneous graph with employee, department, and title nodes"""
-        print("\nCreating heterogeneous graph...")
+        print('
+Creating heterogeneous graph...')
         
-        # Prepare features
         emp_ids = self.prepare_features(employees, departments, dept_emp, titles, salaries, cutoff_date)
         
-        # Create graph
         data = HeteroData()
         
-        # Add node features
         data['employee'].x = torch.from_numpy(self.emp_features)
         data['department'].x = torch.from_numpy(self.dept_features)
         data['title'].x = torch.from_numpy(self.title_features)
         
-        # Create edges
-        print("\nCreating edges...")
+        print('
+Creating edges...')
         
-        # Employee -> Department edges
         latest_dept = get_latest_by(
             dept_emp,
             by_cols=['emp_no'],
@@ -157,14 +139,13 @@ class GraphBuilder:
         
         emp_dept_edges = []
         for emp_idx, (_, row) in enumerate(latest_dept.iterrows()):
-            dept_idx = int(row['dept_no'].replace('d', '')) - 1  # d001 -> 0
+            dept_idx = int(row['dept_no'].replace('d', '')) - 1
             emp_dept_edges.append([emp_idx, dept_idx])
         
         if emp_dept_edges:
             emp_dept_edges = torch.tensor(emp_dept_edges, dtype=torch.long).t()
             data['employee', 'works_in', 'department'].edge_index = emp_dept_edges
         
-        # Employee -> Title edges
         latest_title = get_latest_by(
             titles,
             by_cols=['emp_no'],
@@ -183,8 +164,8 @@ class GraphBuilder:
             emp_title_edges = torch.tensor(emp_title_edges, dtype=torch.long).t()
             data['employee', 'has_role', 'title'].edge_index = emp_title_edges
         
-        # Create labels (1 = left before cutoff)
-        print("\nCreating labels...")
+        print('
+Creating labels...')
         cutoff = pd.to_datetime(cutoff_date)
         latest_emp = get_latest_by(
             dept_emp,
@@ -195,14 +176,14 @@ class GraphBuilder:
         
         labels = torch.zeros(len(emp_ids), dtype=torch.long)
         for idx, (_, row) in enumerate(latest_emp.iterrows()):
-            if str(row['to_date']) != '9999-01-01':  # Not current employee
+            if str(row['to_date']) != '9999-01-01':
                 if pd.to_datetime(row['to_date']) < cutoff:
                     labels[idx] = 1
         
         data['employee'].y = labels
         
-        # Create train/val/test split
-        print("\nCreating data splits...")
+        print('
+Creating data splits...')
         num_nodes = len(emp_ids)
         perm = torch.randperm(num_nodes)
         
@@ -222,29 +203,29 @@ class GraphBuilder:
         data['employee'].val_mask = val_mask
         data['employee'].test_mask = test_mask
         
-        print("\nGraph creation complete!")
-        print(f"Number of employee nodes: {data['employee'].num_nodes}")
-        print(f"Number of department nodes: {data['department'].num_nodes}")
-        print(f"Number of title nodes: {data['title'].num_nodes}")
+        print('
+Graph creation complete!')
+        print(f'Number of employee nodes: {data["employee"].num_nodes}')
+        print(f'Number of department nodes: {data["department"].num_nodes}')
+        print(f'Number of title nodes: {data["title"].num_nodes}')
         
         return data
 
     def create_homogeneous_graph(self, employees, departments, dept_emp, titles, salaries, cutoff_date: str) -> Data:
         """Create homogeneous graph (employee nodes only)"""
-        print("\nCreating homogeneous graph...")
+        print('
+Creating homogeneous graph...')
         
-        # Prepare features
         emp_ids = self.prepare_features(employees, departments, dept_emp, titles, salaries, cutoff_date)
         
-        # Create basic graph structure
         data = Data(
             x=torch.from_numpy(self.emp_features),
-            edge_index=None,  # Will be set below
-            y=None  # Will be set below
+            edge_index=None,
+            y=None
         )
         
-        # Create edges between employees in same department
-        print("\nCreating edges...")
+        print('
+Creating edges...')
         latest_dept = get_latest_by(
             dept_emp,
             by_cols=['emp_no'],
@@ -257,7 +238,6 @@ class GraphBuilder:
         
         for dept_employees in dept_groups:
             if len(dept_employees) > 1:
-                # Get indices for employees in this department
                 dept_indices = []
                 for emp_no in dept_employees:
                     try:
@@ -266,10 +246,8 @@ class GraphBuilder:
                     except IndexError:
                         continue
                 
-                # Create edges between all pairs in department
                 for i in range(len(dept_indices)):
                     for j in range(i + 1, len(dept_indices)):
-                        # Add edges in both directions
                         edge_list.append([dept_indices[i], dept_indices[j]])
                         edge_list.append([dept_indices[j], dept_indices[i]])
         
@@ -278,8 +256,8 @@ class GraphBuilder:
         else:
             data.edge_index = torch.zeros((2, 0), dtype=torch.long)
         
-        # Create labels
-        print("\nCreating labels...")
+        print('
+Creating labels...')
         cutoff = pd.to_datetime(cutoff_date)
         latest_emp = get_latest_by(
             dept_emp,
@@ -290,14 +268,14 @@ class GraphBuilder:
         
         labels = torch.zeros(len(emp_ids), dtype=torch.long)
         for idx, (_, row) in enumerate(latest_emp.iterrows()):
-            if str(row['to_date']) != '9999-01-01':  # Not current employee
+            if str(row['to_date']) != '9999-01-01':
                 if pd.to_datetime(row['to_date']) < cutoff:
                     labels[idx] = 1
         
         data.y = labels
         
-        # Create train/val/test split
-        print("\nCreating data splits...")
+        print('
+Creating data splits...')
         num_nodes = len(emp_ids)
         perm = torch.randperm(num_nodes)
         
@@ -313,8 +291,9 @@ class GraphBuilder:
         data.val_mask[val_idx] = True
         data.test_mask[test_idx] = True
         
-        print("\nGraph creation complete!")
-        print(f"Number of nodes: {data.num_nodes}")
-        print(f"Number of edges: {data.num_edges}")
-
-    return data
+        print('
+Graph creation complete!')
+        print(f'Number of nodes: {data.num_nodes}')
+        print(f'Number of edges: {data.num_edges}')
+        
+        return data
