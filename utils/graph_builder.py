@@ -131,8 +131,11 @@ def create_graph(
         dept_onehot
     ]).astype(np.float32)
     
-    # Department features (one-hot)
-    dept_features = np.eye(len(dept_list), dtype=np.float32)
+    # Department features (match employee feature dimension)
+    feature_dim = emp_features.shape[1]
+    dept_features = np.zeros((len(dept_list), feature_dim), dtype=np.float32)
+    # Set one-hot part of department features
+    dept_features[:, -len(dept_list):] = np.eye(len(dept_list))
     
     # Combine features
     x = torch.from_numpy(np.vstack([emp_features, dept_features]))
@@ -202,5 +205,6 @@ def create_graph(
     print(f"Number of edges: {data.num_edges}")
     print(f"Number of employees: {data.num_employees}")
     print(f"Number of departments: {data.num_departments}")
+    print(f"Feature dimension: {feature_dim}")
 
     return data
