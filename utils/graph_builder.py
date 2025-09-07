@@ -5,7 +5,11 @@ from torch_geometric.data import Data, HeteroData
 from typing import Dict, Optional
 
 def standardize(df, columns):
-    """Standardize numeric columns to zero mean and unit variance"""
+    """Standardize numeric columns to zero mean and unit variance.
+    Args:
+        df: pandas DataFrame
+        columns: list of column names to standardize
+    """
     df_std = df.copy()
     for col in columns:
         mean = df_std[col].mean()
