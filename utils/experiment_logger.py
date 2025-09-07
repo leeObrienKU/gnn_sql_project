@@ -22,7 +22,7 @@ class ExperimentLogger:
             "validation": [],
             "test": None,
             "confusion_matrix": None,
-            "class_names": None
+            "class_names": []  # Initialize as empty list
         }
         self.wandb_run = None
         self.performance_summary = None
@@ -93,6 +93,12 @@ class ExperimentLogger:
 
     def log_confusion_matrix(self, cm, class_names):
         """Log confusion matrix"""
+        # Ensure class_names is a list
+        if isinstance(class_names, str):
+            class_names = [class_names]
+        elif not isinstance(class_names, list):
+            class_names = list(class_names)
+        
         self.metrics["confusion_matrix"] = cm.tolist()
         self.metrics["class_names"] = class_names
         
@@ -149,7 +155,7 @@ class ExperimentLogger:
             if self.metrics["confusion_matrix"] is not None:
                 f.write("\nConfusion Matrix:\n")
                 cm = np.array(self.metrics["confusion_matrix"])
-                class_names = self.metrics["class_names"]
+                class_names = self.metrics["class_names"] or ["Class 0", "Class 1"]  # Default names if none provided
                 f.write("\nClass names: " + ", ".join(class_names) + "\n")
                 f.write("\n" + str(cm) + "\n")
                 
