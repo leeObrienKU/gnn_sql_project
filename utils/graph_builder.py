@@ -138,7 +138,7 @@ def create_graph(
     dept_features[:, -len(dept_list):] = np.eye(len(dept_list))
     
     # Combine features
-    x = torch.from_numpy(np.vstack([emp_features, dept_features]))
+    x = torch.from_numpy(np.vstack([emp_features, dept_features])).contiguous()
     
     # Create edges
     print("\nCreating edges...")
@@ -151,7 +151,10 @@ def create_graph(
             edge_list.append([emp_idx, dept_idx])
             edge_list.append([dept_idx, emp_idx])  # make it bidirectional
     
-    edge_index = torch.tensor(edge_list, dtype=torch.long).t() if edge_list else torch.zeros((2, 0), dtype=torch.long)
+    if edge_list:
+        edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
+    else:
+        edge_index = torch.zeros((2, 0), dtype=torch.long).contiguous()
     
     # Create labels
     print("\nCreating labels...")
@@ -164,7 +167,7 @@ def create_graph(
     )
     
     # Employee labels (1 = left before cutoff)
-    labels = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.long)
+    labels = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.long).contiguous()
     for idx, (_, row) in enumerate(latest_emp.iterrows()):
         if str(row['to_date']) != '9999-01-01':
             if pd.to_datetime(row['to_date']) < cutoff:
@@ -179,14 +182,14 @@ def create_graph(
     val_idx = perm[int(0.6 * num_nodes):int(0.8 * num_nodes)]
     test_idx = perm[int(0.8 * num_nodes):]
     
-    train_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool)
-    val_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool)
-    test_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool)
+    train_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool).contiguous()
+    val_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool).contiguous()
+    test_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool).contiguous()
     
     train_mask[train_idx] = True
     val_mask[val_idx] = True
     test_mask[test_idx] = True
-
+    
     # Create graph
     data = Data(x=x, edge_index=edge_index, y=labels)
     data.train_mask = train_mask
@@ -199,12 +202,12 @@ def create_graph(
     data.num_classes = 2  # binary classification
     data.task = task
     data.ref_date = str(ref_date.date())
-
+    
     print("\nGraph creation complete!")
     print(f"Number of nodes: {data.num_nodes}")
     print(f"Number of edges: {data.num_edges}")
     print(f"Number of employees: {data.num_employees}")
     print(f"Number of departments: {data.num_departments}")
     print(f"Feature dimension: {feature_dim}")
-
+    
     return data
