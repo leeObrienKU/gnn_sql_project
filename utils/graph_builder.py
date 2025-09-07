@@ -18,7 +18,14 @@ def standardize(df, columns):
 
 def get_latest_by(df, by_cols, sort_cols, keep_cols):
     """Get the latest record for each group"""
-    return df.sort_values(sort_cols).groupby(by_cols)[keep_cols].last().reset_index()
+    # Make sure by_cols are not in keep_cols to avoid duplication
+    keep_cols_unique = [col for col in keep_cols if col not in by_cols]
+    # Get the latest records
+    latest = df.sort_values(sort_cols).groupby(by_cols)[keep_cols_unique].last()
+    # Only reset_index if we have by_cols that aren't in the result
+    if any(col not in keep_cols_unique for col in by_cols):
+        latest = latest.reset_index()
+    return latest
 
 class GraphBuilder:
     def __init__(self):
@@ -69,9 +76,12 @@ class GraphBuilder:
         
         # Calculate salary growth
         print("Calculating salary growth...")
-        salary_growth = salaries.groupby('emp_no')['salary'].apply(
-            lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] if len(x) > 1 else 0.0
-        ).reset_index(name='salary_growth')
+        salary_growth = salaries.groupby('emp_no').agg(
+            salary_growth=pd.NamedAgg(
+                column='salary',
+                aggfunc=lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] if len(x) > 1 else 0.0
+            )
+        ).reset_index()
         
         # Assemble features
         print("Assembling features...")
@@ -117,11 +127,11 @@ class GraphBuilder:
 
     def create_heterogeneous_graph(
         self,
-        employees,
-        departments,
-        dept_emp,
-        titles,
-        salaries,
+    employees,
+    departments,
+    dept_emp,
+    titles,
+    salaries,
         cutoff_date: str
     ) -> HeteroData:
         """Create heterogeneous graph with employee, department, and title nodes"""
@@ -183,7 +193,7 @@ class GraphBuilder:
         print("\nCreating labels...")
         cutoff = pd.to_datetime(cutoff_date)
         latest_emp = get_latest_by(
-            dept_emp,
+        dept_emp,
             by_cols=['emp_no'],
             sort_cols=['to_date'],
             keep_cols=['emp_no', 'to_date']
@@ -322,5 +332,5 @@ class GraphBuilder:
         print("\nGraph creation complete!")
         print(f"Number of nodes: {data.num_nodes}")
         print(f"Number of edges: {data.num_edges}")
-        
-        return data
+
+    return data
