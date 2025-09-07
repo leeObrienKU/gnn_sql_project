@@ -27,287 +27,180 @@ def get_latest_by(df, by_cols, sort_cols, keep_cols):
         latest = latest.reset_index()
     return latest
 
-class GraphBuilder:
-    def __init__(self):
-        self.emp_features = None
-        self.dept_features = None
-        self.title_features = None
+def create_graph(
+    employees,
+    departments,
+    dept_emp,
+    dept_manager,
+    titles,
+    salaries,
+    task: str = "attrition",
+    cutoff_date: str = "2000-01-01",
+    use_all_history_edges: bool = True
+):
+    """Create graph for employee attrition prediction.
+    
+    Args:
+        employees: DataFrame with employee info
+        departments: DataFrame with department info
+        dept_emp: DataFrame with employee-department relationships
+        dept_manager: DataFrame with manager info
+        titles: DataFrame with employee titles
+        salaries: DataFrame with salary info
+        task: Task type ("attrition" or "dept")
+        cutoff_date: Date for attrition labeling
+        use_all_history_edges: Whether to use historical relationships
+    """
+    print("\nCreating graph...")
+    
+    # Calculate employee features
+    ref_date = pd.to_datetime(cutoff_date)
+    employees = employees.copy()
+    employees['birth_date'] = pd.to_datetime(employees['birth_date'])
+    employees['hire_date'] = pd.to_datetime(employees['hire_date'])
+    
+    employees['age_years'] = (ref_date - employees['birth_date']).dt.days / 365.25
+    employees['tenure_years'] = (ref_date - employees['hire_date']).dt.days / 365.25
+    
+    # Get latest salary
+    print("Processing salary data...")
+    latest_salary = get_latest_by(
+        salaries,
+        by_cols=['emp_no'],
+        sort_cols=['to_date'],
+        keep_cols=['emp_no', 'salary']
+    ).rename(columns={'salary': 'curr_salary'})
+    
+    # Get latest department
+    print("Processing department data...")
+    latest_dept = get_latest_by(
+        dept_emp,
+        by_cols=['emp_no'],
+        sort_cols=['to_date'],
+        keep_cols=['emp_no', 'dept_no']
+    )
+    
+    # Get latest title
+    print("Processing title data...")
+    latest_title = get_latest_by(
+        titles,
+        by_cols=['emp_no'],
+        sort_cols=['to_date'],
+        keep_cols=['emp_no', 'title']
+    )
+    latest_title['title_code'] = latest_title['title'].astype('category').cat.codes
+    
+    # Calculate salary growth
+    print("Calculating salary growth...")
+    salary_growth = salaries.groupby('emp_no').agg(
+        salary_growth=pd.NamedAgg(
+            column='salary',
+            aggfunc=lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] if len(x) > 1 else 0.0
+        )
+    ).reset_index()
+    
+    # Assemble features
+    print("Assembling features...")
+    emp_feat = employees[['emp_no', 'age_years', 'tenure_years']].copy()
+    emp_feat = emp_feat.merge(latest_salary[['emp_no', 'curr_salary']], on='emp_no', how='left')
+    emp_feat = emp_feat.merge(salary_growth, on='emp_no', how='left')
+    emp_feat = emp_feat.merge(latest_title[['emp_no', 'title_code']], on='emp_no', how='left')
+    emp_feat = emp_feat.merge(latest_dept[['emp_no', 'dept_no']], on='emp_no', how='left')
+    
+    # Fill missing values
+    numeric_cols = ['age_years', 'tenure_years', 'curr_salary', 'salary_growth', 'title_code']
+    emp_feat[numeric_cols] = emp_feat[numeric_cols].fillna(0.0)
+    
+    # Create department one-hot encoding
+    print("Creating department encoding...")
+    dept_list = sorted(departments['dept_no'].unique())
+    dept_to_idx = {dept: idx for idx, dept in enumerate(dept_list)}
+    
+    dept_onehot = np.zeros((len(emp_feat), len(dept_list)), dtype=np.float32)
+    for i, dept in enumerate(emp_feat['dept_no']):
+        if pd.notna(dept) and dept in dept_to_idx:
+            dept_onehot[i, dept_to_idx[dept]] = 1.0
+    
+    # Standardize numeric features
+    print("Standardizing features...")
+    emp_feat_std = standardize(emp_feat[numeric_cols], numeric_cols)
+    
+    # Final features
+    emp_features = np.hstack([
+        emp_feat_std.values,
+        dept_onehot
+    ]).astype(np.float32)
+    
+    # Department features (one-hot)
+    dept_features = np.eye(len(dept_list), dtype=np.float32)
+    
+    # Combine features
+    x = torch.from_numpy(np.vstack([emp_features, dept_features]))
+    
+    # Create edges
+    print("\nCreating edges...")
+    edge_list = []
+    
+    # Employee-Department edges
+    for emp_idx, (_, row) in enumerate(latest_dept.iterrows()):
+        if pd.notna(row['dept_no']) and row['dept_no'] in dept_to_idx:
+            dept_idx = dept_to_idx[row['dept_no']] + len(emp_feat)  # offset for department nodes
+            edge_list.append([emp_idx, dept_idx])
+            edge_list.append([dept_idx, emp_idx])  # make it bidirectional
+    
+    edge_index = torch.tensor(edge_list, dtype=torch.long).t() if edge_list else torch.zeros((2, 0), dtype=torch.long)
+    
+    # Create labels
+    print("\nCreating labels...")
+    cutoff = pd.to_datetime(cutoff_date)
+    latest_emp = get_latest_by(
+        dept_emp,
+        by_cols=['emp_no'],
+        sort_cols=['to_date'],
+        keep_cols=['emp_no', 'to_date']
+    )
+    
+    # Employee labels (1 = left before cutoff)
+    labels = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.long)
+    for idx, (_, row) in enumerate(latest_emp.iterrows()):
+        if str(row['to_date']) != '9999-01-01':
+            if pd.to_datetime(row['to_date']) < cutoff:
+                labels[idx] = 1
+    
+    # Create train/val/test split
+    print("\nCreating data splits...")
+    num_nodes = len(emp_feat)  # only split employees
+    perm = torch.randperm(num_nodes)
+    
+    train_idx = perm[:int(0.6 * num_nodes)]
+    val_idx = perm[int(0.6 * num_nodes):int(0.8 * num_nodes)]
+    test_idx = perm[int(0.8 * num_nodes):]
+    
+    train_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool)
+    val_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool)
+    test_mask = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.bool)
+    
+    train_mask[train_idx] = True
+    val_mask[val_idx] = True
+    test_mask[test_idx] = True
 
-    def prepare_features(self, employees, departments, dept_emp, titles, salaries, ref_date):
-        """Prepare node features"""
-        print("Preparing features...")
-        ref_date = pd.to_datetime(ref_date)
-        
-        # Calculate employee features
-        employees = employees.copy()
-        employees['birth_date'] = pd.to_datetime(employees['birth_date'])
-        employees['hire_date'] = pd.to_datetime(employees['hire_date'])
-        
-        employees['age_years'] = (ref_date - employees['birth_date']).dt.days / 365.25
-        employees['tenure_years'] = (ref_date - employees['hire_date']).dt.days / 365.25
-        
-        # Get latest salary
-        print("Processing salary data...")
-        latest_salary = get_latest_by(
-            salaries,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'salary']
-        ).rename(columns={'salary': 'curr_salary'})
-        
-        # Get latest department
-        print("Processing department data...")
-        latest_dept = get_latest_by(
-            dept_emp,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'dept_no']
-        )
-        
-        # Get latest title
-        print("Processing title data...")
-        latest_title = get_latest_by(
-            titles,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'title']
-        )
-        latest_title['title_code'] = latest_title['title'].astype('category').cat.codes
-        
-        # Calculate salary growth
-        print("Calculating salary growth...")
-        salary_growth = salaries.groupby('emp_no').agg(
-            salary_growth=pd.NamedAgg(
-                column='salary',
-                aggfunc=lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] if len(x) > 1 else 0.0
-            )
-        ).reset_index()
-        
-        # Assemble features
-        print("Assembling features...")
-        emp_feat = employees[['emp_no', 'age_years', 'tenure_years']].copy()
-        emp_feat = emp_feat.merge(latest_salary[['emp_no', 'curr_salary']], on='emp_no', how='left')
-        emp_feat = emp_feat.merge(salary_growth, on='emp_no', how='left')
-        emp_feat = emp_feat.merge(latest_title[['emp_no', 'title_code']], on='emp_no', how='left')
-        emp_feat = emp_feat.merge(latest_dept[['emp_no', 'dept_no']], on='emp_no', how='left')
-        
-        # Fill missing values
-        numeric_cols = ['age_years', 'tenure_years', 'curr_salary', 'salary_growth', 'title_code']
-        emp_feat[numeric_cols] = emp_feat[numeric_cols].fillna(0.0)
-        
-        # Create department one-hot encoding
-        print("Creating department encoding...")
-        dept_list = sorted(departments['dept_no'].unique())
-        dept_to_idx = {dept: idx for idx, dept in enumerate(dept_list)}
-        
-        dept_onehot = np.zeros((len(emp_feat), len(dept_list)), dtype=np.float32)
-        for i, dept in enumerate(emp_feat['dept_no']):
-            if pd.notna(dept) and dept in dept_to_idx:
-                dept_onehot[i, dept_to_idx[dept]] = 1.0
-        
-        # Standardize numeric features
-        print("Standardizing features...")
-        emp_feat_std = standardize(emp_feat[numeric_cols], numeric_cols)
-        
-        # Final features
-        self.emp_features = np.hstack([
-            emp_feat_std.values,
-            dept_onehot
-        ]).astype(np.float32)
-        
-        # Department features (one-hot)
-        self.dept_features = np.eye(len(dept_list), dtype=np.float32)
-        
-        # Title features (one-hot)
-        num_titles = len(latest_title['title_code'].unique())
-        self.title_features = np.eye(num_titles, dtype=np.float32)
-        
-        print("Feature preparation complete!")
-        return emp_feat['emp_no'].values  # Return emp_ids for edge creation
+    # Create graph
+    data = Data(x=x, edge_index=edge_index, y=labels)
+    data.train_mask = train_mask
+    data.val_mask = val_mask
+    data.test_mask = test_mask
+    
+    # Add metadata
+    data.num_employees = len(emp_feat)
+    data.num_departments = len(dept_list)
+    data.num_classes = 2  # binary classification
+    data.task = task
+    data.ref_date = str(ref_date.date())
 
-    def create_heterogeneous_graph(self, employees, departments, dept_emp, titles, salaries, cutoff_date: str) -> HeteroData:
-        """Create heterogeneous graph with employee, department, and title nodes"""
-        print("\nCreating heterogeneous graph...")
-        
-        # Prepare features
-        emp_ids = self.prepare_features(employees, departments, dept_emp, titles, salaries, cutoff_date)
-        
-        # Create graph
-        data = HeteroData()
-        
-        # Add node features
-        data['employee'].x = torch.from_numpy(self.emp_features)
-        data['department'].x = torch.from_numpy(self.dept_features)
-        data['title'].x = torch.from_numpy(self.title_features)
-        
-        # Create edges
-        print("\nCreating edges...")
-        
-        # Employee -> Department edges
-        latest_dept = get_latest_by(
-            dept_emp,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'dept_no']
-        )
-        
-        emp_dept_edges = []
-        for emp_idx, (_, row) in enumerate(latest_dept.iterrows()):
-            dept_idx = int(row['dept_no'].replace('d', '')) - 1
-            emp_dept_edges.append([emp_idx, dept_idx])
-        
-        if emp_dept_edges:
-            emp_dept_edges = torch.tensor(emp_dept_edges, dtype=torch.long).t()
-            data['employee', 'works_in', 'department'].edge_index = emp_dept_edges
-        
-        # Employee -> Title edges
-        latest_title = get_latest_by(
-            titles,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'title']
-        )
-        
-        title_to_idx = {title: idx for idx, title in enumerate(sorted(latest_title['title'].unique()))}
-        emp_title_edges = []
-        
-        for emp_idx, (_, row) in enumerate(latest_title.iterrows()):
-            title_idx = title_to_idx[row['title']]
-            emp_title_edges.append([emp_idx, title_idx])
-        
-        if emp_title_edges:
-            emp_title_edges = torch.tensor(emp_title_edges, dtype=torch.long).t()
-            data['employee', 'has_role', 'title'].edge_index = emp_title_edges
-        
-        # Create labels (1 = left before cutoff)
-        print("\nCreating labels...")
-        cutoff = pd.to_datetime(cutoff_date)
-        latest_emp = get_latest_by(
-            dept_emp,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'to_date']
-        )
-        
-        labels = torch.zeros(len(emp_ids), dtype=torch.long)
-        for idx, (_, row) in enumerate(latest_emp.iterrows()):
-            if str(row['to_date']) != '9999-01-01':
-                if pd.to_datetime(row['to_date']) < cutoff:
-                    labels[idx] = 1
-        
-        data['employee'].y = labels
-        
-        # Create train/val/test split
-        print("\nCreating data splits...")
-        num_nodes = len(emp_ids)
-        perm = torch.randperm(num_nodes)
-        
-        train_idx = perm[:int(0.6 * num_nodes)]
-        val_idx = perm[int(0.6 * num_nodes):int(0.8 * num_nodes)]
-        test_idx = perm[int(0.8 * num_nodes):]
-        
-        train_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        val_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        test_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        
-        train_mask[train_idx] = True
-        val_mask[val_idx] = True
-        test_mask[test_idx] = True
-        
-        data['employee'].train_mask = train_mask
-        data['employee'].val_mask = val_mask
-        data['employee'].test_mask = test_mask
-        
-        print("\nGraph creation complete!")
-        print(f"Number of employee nodes: {data['employee'].num_nodes}")
-        print(f"Number of department nodes: {data['department'].num_nodes}")
-        print(f"Number of title nodes: {data['title'].num_nodes}")
-        
-        return data
-
-    def create_homogeneous_graph(self, employees, departments, dept_emp, titles, salaries, cutoff_date: str) -> Data:
-        """Create homogeneous graph (employee nodes only)"""
-        print("\nCreating homogeneous graph...")
-        
-        # Prepare features
-        emp_ids = self.prepare_features(employees, departments, dept_emp, titles, salaries, cutoff_date)
-        
-        # Create basic graph structure
-        data = Data(
-            x=torch.from_numpy(self.emp_features),
-            edge_index=None,
-            y=None
-        )
-        
-        # Create edges between employees in same department
-        print("\nCreating edges...")
-        latest_dept = get_latest_by(
-            dept_emp,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'dept_no']
-        )
-        
-        edge_list = []
-        dept_groups = latest_dept.groupby('dept_no')['emp_no'].apply(list)
-        
-        for dept_employees in dept_groups:
-            if len(dept_employees) > 1:
-                dept_indices = []
-                for emp_no in dept_employees:
-                    try:
-                        idx = np.where(emp_ids == emp_no)[0][0]
-                        dept_indices.append(idx)
-                    except IndexError:
-                        continue
-                
-                for i in range(len(dept_indices)):
-                    for j in range(i + 1, len(dept_indices)):
-                        edge_list.append([dept_indices[i], dept_indices[j]])
-                        edge_list.append([dept_indices[j], dept_indices[i]])
-        
-        if edge_list:
-            data.edge_index = torch.tensor(edge_list, dtype=torch.long).t()
-        else:
-            data.edge_index = torch.zeros((2, 0), dtype=torch.long)
-        
-        # Create labels
-        print("\nCreating labels...")
-        cutoff = pd.to_datetime(cutoff_date)
-        latest_emp = get_latest_by(
-            dept_emp,
-            by_cols=['emp_no'],
-            sort_cols=['to_date'],
-            keep_cols=['emp_no', 'to_date']
-        )
-        
-        labels = torch.zeros(len(emp_ids), dtype=torch.long)
-        for idx, (_, row) in enumerate(latest_emp.iterrows()):
-            if str(row['to_date']) != '9999-01-01':
-                if pd.to_datetime(row['to_date']) < cutoff:
-                    labels[idx] = 1
-        
-        data.y = labels
-        
-        # Create train/val/test split
-        print("\nCreating data splits...")
-        num_nodes = len(emp_ids)
-        perm = torch.randperm(num_nodes)
-        
-        train_idx = perm[:int(0.6 * num_nodes)]
-        val_idx = perm[int(0.6 * num_nodes):int(0.8 * num_nodes)]
-        test_idx = perm[int(0.8 * num_nodes):]
-        
-        data.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        data.val_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        data.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
-        
-        data.train_mask[train_idx] = True
-        data.val_mask[val_idx] = True
-        data.test_mask[test_idx] = True
-        
-        print("\nGraph creation complete!")
-        print(f"Number of nodes: {data.num_nodes}")
-        print(f"Number of edges: {data.num_edges}")
+    print("\nGraph creation complete!")
+    print(f"Number of nodes: {data.num_nodes}")
+    print(f"Number of edges: {data.num_edges}")
+    print(f"Number of employees: {data.num_employees}")
+    print(f"Number of departments: {data.num_departments}")
 
     return data
