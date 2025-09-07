@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-def plot_training_curves(training_log, logger):
+def plot_training_curves(training_log, out_dir):
     """Plot training curves with consistent naming
     
     Args:
         training_log: list of dicts with keys: epoch, train_loss, val_acc
-        logger: ExperimentLogger instance for consistent naming and directory structure
+        out_dir: directory to save plots
     """
     if not training_log:
         return
@@ -23,11 +23,12 @@ def plot_training_curves(training_log, logger):
     plt.plot(epochs, train_loss, label="Train Loss", color='#2ecc71')
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title(f"Training Loss - {logger.experiment_id}")
+    plt.title("Training Loss")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    loss_path = logger.save_plot(plt.gcf(), "training_loss")
+    loss_path = os.path.join(out_dir, "training_loss.png")
+    plt.savefig(loss_path)
     plt.close()
     
     # Val accuracy curve
@@ -35,22 +36,23 @@ def plot_training_curves(training_log, logger):
     plt.plot(epochs, val_acc, label="Val Accuracy", color='#3498db')
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
-    plt.title(f"Validation Accuracy - {logger.experiment_id}")
+    plt.title("Validation Accuracy")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    acc_path = logger.save_plot(plt.gcf(), "val_accuracy")
+    acc_path = os.path.join(out_dir, "val_accuracy.png")
+    plt.savefig(acc_path)
     plt.close()
     
     return loss_path, acc_path
 
-def plot_confusion_matrix(cm, class_names, logger, normalize=False):
+def plot_confusion_matrix(cm, class_names, out_path, normalize=False):
     """Plot confusion matrix with consistent naming
     
     Args:
         cm: numpy array of confusion matrix
         class_names: list of class names
-        logger: ExperimentLogger instance for consistent naming and directory structure
+        out_path: path to save the plot
         normalize: whether to normalize the confusion matrix
     """
     if normalize:
@@ -60,34 +62,16 @@ def plot_confusion_matrix(cm, class_names, logger, normalize=False):
     sns.heatmap(cm, annot=True, fmt='.2f' if normalize else 'd',
                 xticklabels=class_names, yticklabels=class_names,
                 cmap='YlOrRd')
-    plt.title(f"Confusion Matrix - {logger.experiment_id}")
+    plt.title("Confusion Matrix")
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
     plt.tight_layout()
-    
-    # Save both normalized and raw versions if normalizing
-    paths = []
-    if normalize:
-        paths.append(logger.save_plot(plt.gcf(), "confusion_matrix_norm"))
-        plt.close()
-        
-        # Plot raw counts
-        plt.figure(figsize=(8, 6))
-        sns.heatmap(cm, annot=True, fmt='d',
-                    xticklabels=class_names, yticklabels=class_names,
-                    cmap='YlOrRd')
-        plt.title(f"Confusion Matrix (Counts) - {logger.experiment_id}")
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted Label')
-        plt.tight_layout()
-        paths.append(logger.save_plot(plt.gcf(), "confusion_matrix_raw"))
-    else:
-        paths.append(logger.save_plot(plt.gcf(), "confusion_matrix"))
-    
+    plt.savefig(out_path)
     plt.close()
-    return paths
+    
+    return out_path
 
-def plot_roc_curve(fpr, tpr, roc_auc, logger):
+def plot_roc_curve(fpr, tpr, roc_auc, out_path):
     """Plot ROC curve with consistent naming"""
     plt.figure(figsize=(8, 6))
     plt.plot(fpr, tpr, color='#e74c3c', lw=2,
@@ -97,16 +81,16 @@ def plot_roc_curve(fpr, tpr, roc_auc, logger):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'ROC Curve - {logger.experiment_id}')
+    plt.title('ROC Curve')
     plt.legend(loc="lower right")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    
-    path = logger.save_plot(plt.gcf(), "roc_curve")
+    plt.savefig(out_path)
     plt.close()
-    return path
+    
+    return out_path
 
-def plot_pr_curve(y_true, y_scores, logger):
+def plot_pr_curve(y_true, y_scores, out_path):
     """Plot Precision-Recall curve with consistent naming"""
     from sklearn.metrics import precision_recall_curve, average_precision_score
     
@@ -118,11 +102,11 @@ def plot_pr_curve(y_true, y_scores, logger):
              label=f'PR curve (AP = {ap:.2f})')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
-    plt.title(f'Precision-Recall Curve - {logger.experiment_id}')
+    plt.title('Precision-Recall Curve')
     plt.legend(loc="lower left")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    
-    path = logger.save_plot(plt.gcf(), "pr_curve")
+    plt.savefig(out_path)
     plt.close()
-    return path, ap
+    
+    return out_path, ap
