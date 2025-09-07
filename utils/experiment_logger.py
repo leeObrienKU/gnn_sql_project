@@ -26,9 +26,9 @@ class ExperimentLogger:
         self.wandb_run = None
         self.performance_summary = None
 
-    def _setup_directories(self, model_name, graph_type):
+    def _setup_directories(self, model_name):
         """Setup directory structure once model type is known"""
-        self.experiment_id = f"{model_name}_{graph_type}_{self.timestamp}"
+        self.experiment_id = f"{model_name}_{self.timestamp}"
         self.log_dir = os.path.join(self.base_dir, self.experiment_id)
         os.makedirs(self.log_dir, exist_ok=True)
         
@@ -43,7 +43,7 @@ class ExperimentLogger:
         self.params = params
         
         # Setup directories now that we know the model type
-        self._setup_directories(params['model'], params['graph_type'])
+        self._setup_directories(params['model'])
         
         # Save parameters to file
         params_file = os.path.join(self.log_dir, "parameters.json")
@@ -118,7 +118,6 @@ class ExperimentLogger:
         # Create performance summary
         self.performance_summary = {
             "model_type": model_summary["type"],
-            "graph_type": model_summary["graph_type"],
             "timestamp": self.timestamp,
             "test_accuracy": float(test_acc),
             "runtime_seconds": runtime,
