@@ -17,7 +17,7 @@ def standardize(df, columns):
     return df_std
 
 def get_latest_by(df, by_cols, sort_cols, keep_cols):
-    """Get the latest record for each group"""
+    """Get the latest record for each group, avoiding column duplication"""
     # Make sure by_cols are not in keep_cols to avoid duplication
     keep_cols_unique = [col for col in keep_cols if col not in by_cols]
     # Get the latest records
