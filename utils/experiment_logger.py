@@ -21,7 +21,8 @@ class ExperimentLogger:
             "training": [],
             "validation": [],
             "test": None,
-            "confusion_matrix": None
+            "confusion_matrix": None,
+            "class_names": None
         }
         self.wandb_run = None
         self.performance_summary = None
@@ -92,15 +93,16 @@ class ExperimentLogger:
 
     def log_confusion_matrix(self, cm, class_names):
         """Log confusion matrix"""
-        self.metrics["confusion_matrix"] = {
-            "matrix": cm.tolist(),
-            "class_names": class_names
-        }
+        self.metrics["confusion_matrix"] = cm.tolist()
+        self.metrics["class_names"] = class_names
         
         # Save confusion matrix
         cm_file = os.path.join(self.metrics_dir, "confusion_matrix.json")
         with open(cm_file, 'w') as f:
-            json.dump(self.metrics["confusion_matrix"], f, indent=2)
+            json.dump({
+                "matrix": cm.tolist(),
+                "class_names": class_names
+            }, f, indent=2)
 
     def save_plot(self, fig, name):
         """Save a matplotlib figure with consistent naming"""
@@ -146,8 +148,8 @@ class ExperimentLogger:
             # Add confusion matrix if available
             if self.metrics["confusion_matrix"] is not None:
                 f.write("\nConfusion Matrix:\n")
-                cm = np.array(self.metrics["confusion_matrix"]["matrix"])
-                class_names = self.metrics["confusion_matrix"]["class_names"]
+                cm = np.array(self.metrics["confusion_matrix"])
+                class_names = self.metrics["class_names"]
                 f.write("\nClass names: " + ", ".join(class_names) + "\n")
                 f.write("\n" + str(cm) + "\n")
                 
