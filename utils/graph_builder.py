@@ -125,22 +125,12 @@ class GraphBuilder:
         print("Feature preparation complete!")
         return emp_feat['emp_no'].values  # Return emp_ids for edge creation
 
-    def create_heterogeneous_graph(
-        self,
-    employees,
-    departments,
-    dept_emp,
-    titles,
-    salaries,
-        cutoff_date: str
-    ) -> HeteroData:
+    def create_heterogeneous_graph(self, employees, departments, dept_emp, titles, salaries, cutoff_date: str) -> HeteroData:
         """Create heterogeneous graph with employee, department, and title nodes"""
         print("\nCreating heterogeneous graph...")
         
         # Prepare features
-        emp_ids = self.prepare_features(
-            employees, departments, dept_emp, titles, salaries, cutoff_date
-        )
+        emp_ids = self.prepare_features(employees, departments, dept_emp, titles, salaries, cutoff_date)
         
         # Create graph
         data = HeteroData()
@@ -193,7 +183,7 @@ class GraphBuilder:
         print("\nCreating labels...")
         cutoff = pd.to_datetime(cutoff_date)
         latest_emp = get_latest_by(
-        dept_emp,
+            dept_emp,
             by_cols=['emp_no'],
             sort_cols=['to_date'],
             keep_cols=['emp_no', 'to_date']
@@ -235,22 +225,12 @@ class GraphBuilder:
         
         return data
 
-    def create_homogeneous_graph(
-        self,
-        employees,
-        departments,
-        dept_emp,
-        titles,
-        salaries,
-        cutoff_date: str
-    ) -> Data:
+    def create_homogeneous_graph(self, employees, departments, dept_emp, titles, salaries, cutoff_date: str) -> Data:
         """Create homogeneous graph (employee nodes only)"""
         print("\nCreating homogeneous graph...")
         
         # Prepare features
-        emp_ids = self.prepare_features(
-            employees, departments, dept_emp, titles, salaries, cutoff_date
-        )
+        emp_ids = self.prepare_features(employees, departments, dept_emp, titles, salaries, cutoff_date)
         
         # Create basic graph structure
         data = Data(
