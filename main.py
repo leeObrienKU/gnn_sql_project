@@ -14,13 +14,8 @@ import pandas as pd
 import networkx as nx
 
 from utils.data_loader import load_employees_db
-from utils.graph_builder import create_graph
-from utils.advanced_graph_builder import AdvancedGraphBuilder
+from utils.graph_builder import GraphBuilder
 from models.gnn_model import GNN
-from models.advanced_models import (
-    HomogeneousGNN, HeteroGNN, TemporalGNN,
-    HierarchicalGNN, KGNN
-)
 from models.trainer import train_and_evaluate
 
 # Weights & Biases (optional)
@@ -36,36 +31,13 @@ def main():
     
     # Model selection
     parser.add_argument('--model', type=str, default='GCN',
-                        choices=['GCN', 'GAT', 'GraphSAGE', 
-                                'HomogeneousGNN', 'HeteroGNN', 'TemporalGNN',
-                                'HierarchicalGNN', 'KGNN'],
+                        choices=['GCN', 'GAT', 'GraphSAGE'],
                         help='Type of GNN model')
     
     # Graph structure
-    parser.add_argument('--graph_type', type=str, default='bipartite',
-                        choices=['bipartite', 'homogeneous', 'heterogeneous', 
-                                'temporal', 'hierarchical', 'knowledge'],
+    parser.add_argument('--graph_type', type=str, default='homogeneous',
+                        choices=['homogeneous', 'heterogeneous'],
                         help='Type of graph structure to use')
-    
-    # Advanced model parameters
-    parser.add_argument('--similarity_threshold', type=float, default=0.7,
-                        help='Similarity threshold for homogeneous graph')
-    parser.add_argument('--num_heads', type=int, default=4,
-                        help='Number of attention heads for GAT/HeteroGNN')
-    parser.add_argument('--num_relations', type=int, default=5,
-                        help='Number of relation types for knowledge graph')
-    parser.add_argument('--dept_hidden_dim', type=int, default=128,
-                        help='Hidden dimension for department-level GNN')
-    parser.add_argument('--emp_hidden_dim', type=int, default=256,
-                        help='Hidden dimension for employee-level GNN')
-    parser.add_argument('--time_windows', type=str, default="2000-01-01,2001-01-01,2002-01-01",
-                        help='Comma-separated list of dates for temporal snapshots')
-    parser.add_argument('--prediction_horizon', type=str, default="6M",
-                        help='Prediction horizon for temporal model (e.g., 6M for 6 months)')
-    
-    # Experiment tracking
-    parser.add_argument('--experiment_name', type=str, default=None,
-                        help='Name for this experiment run')
     
     # Original parameters
     parser.add_argument('--epochs', type=int, default=50,
@@ -114,8 +86,6 @@ def main():
     
     # Initialize logging
     logger = ExperimentLogger()
-    if args.experiment_name:
-        logger.experiment_id = args.experiment_name
     
     # W&B setup
     if args.wandb and _WANDB_AVAILABLE:
@@ -126,7 +96,7 @@ def main():
             project=args.wandb_project,
             entity=args.wandb_entity,
             config={},
-            name=f"{args.model}-{args.graph_type}-{logger.experiment_id}"
+            name=f"{args.model}-{args.graph_type}"
         )
     
     # Log parameters
@@ -138,102 +108,44 @@ def main():
     
     # Build graph based on type
     print(f"\n🛠️ Building {args.graph_type} graph...")
-    builder = AdvancedGraphBuilder()
+    builder = GraphBuilder()
     
-    if args.graph_type == 'bipartite':
-        data = create_graph(
+    if args.graph_type == 'homogeneous':
+        data = builder.create_homogeneous_graph(
             employees=employees,
             departments=departments,
             dept_emp=dept_emp,
-            dept_manager=dept_manager,
             titles=titles,
             salaries=salaries,
-            task=args.task,
-            cutoff_date=args.cutoff,
-            use_all_history_edges=not args.current_edges_only
-        )
-    elif args.graph_type == 'homogeneous':
-        data = builder.create_employee_graph(
-            employees, departments, dept_emp, titles, salaries,
-            cutoff_date=args.cutoff,
-            similarity_threshold=args.similarity_threshold
-        )
-    elif args.graph_type == 'heterogeneous':
-        data = builder.create_heterogeneous_graph(
-            employees, departments, dept_emp, titles, salaries,
             cutoff_date=args.cutoff
         )
-    elif args.graph_type == 'temporal':
-        time_windows = args.time_windows.split(',')
-        data = builder.create_temporal_graph(
-            employees, departments, dept_emp, titles, salaries,
-            time_windows=time_windows,
-            prediction_horizon=args.prediction_horizon
-        )
-    elif args.graph_type == 'hierarchical':
-        dept_graph, emp_graphs = builder.create_hierarchical_graph(
-            employees, departments, dept_emp, dept_manager,
-            titles, salaries, cutoff_date=args.cutoff
-        )
-        data = (dept_graph, emp_graphs)
-    elif args.graph_type == 'knowledge':
-        data = builder.create_knowledge_graph(
-            employees, departments, dept_emp, titles, salaries,
+    else:  # heterogeneous
+        data = builder.create_heterogeneous_graph(
+            employees=employees,
+            departments=departments,
+            dept_emp=dept_emp,
+            titles=titles,
+            salaries=salaries,
             cutoff_date=args.cutoff
         )
     
     # Create appropriate model
-    input_dim = data.x.shape[1] if hasattr(data, 'x') else data[0].x.shape[1]
-    num_classes = getattr(data, 'num_classes', 2)
+    input_dim = data.x.shape[1] if hasattr(data, 'x') else data['employee'].x.shape[1]
+    num_classes = 2  # Binary classification for attrition
     
-    if args.model in ['GCN', 'GAT', 'GraphSAGE']:
-        model = GNN(
-            model_type=args.model,
-            input_dim=input_dim,
-            hidden_dim=args.hidden_dim,
-            output_dim=num_classes
-        )
-    elif args.model == 'HomogeneousGNN':
-        model = HomogeneousGNN(
-            input_dim=input_dim,
-            hidden_dim=args.hidden_dim,
-            output_dim=num_classes
-        )
-    elif args.model == 'HeteroGNN':
-        model = HeteroGNN(
-            metadata=data.metadata(),
-            hidden_dim=args.hidden_dim,
-            output_dim=num_classes,
-            num_heads=args.num_heads
-        )
-    elif args.model == 'TemporalGNN':
-        model = TemporalGNN(
-            input_dim=input_dim,
-            hidden_dim=args.hidden_dim,
-            output_dim=num_classes,
-            num_snapshots=len(args.time_windows.split(','))
-        )
-    elif args.model == 'HierarchicalGNN':
-        model = HierarchicalGNN(
-            input_dim=input_dim,
-            dept_hidden_dim=args.dept_hidden_dim,
-            emp_hidden_dim=args.emp_hidden_dim,
-            output_dim=num_classes
-        )
-    elif args.model == 'KGNN':
-        model = KGNN(
-            input_dim=input_dim,
-            hidden_dim=args.hidden_dim,
-            output_dim=num_classes,
-            num_relations=args.num_relations
-        )
+    model = GNN(
+        model_type=args.model,
+        input_dim=input_dim,
+        hidden_dim=args.hidden_dim,
+        output_dim=num_classes
+    )
     
     # Training setup
     train_loader = NeighborLoader(
         data,
         num_neighbors=[30, 20],
         batch_size=args.batch_size,
-        input_nodes=data.train_mask,
+        input_nodes=data.train_mask if hasattr(data, 'train_mask') else data['employee'].train_mask,
         shuffle=True
     )
     
@@ -260,8 +172,7 @@ def main():
     out_dir = logger.log_dir
     plot_training_curves(logger.metrics["training"], out_dir)
     cm = np.array(logger.metrics.get("confusion_matrix", [[0, 0], [0, 0]]))
-    class_names = ["Stay", "Leave"] if args.task == "attrition" and cm.shape == (2, 2) \
-                  else [str(i) for i in range(cm.shape[0])]
+    class_names = ["Stay", "Leave"]
     plot_confusion_matrix(cm, class_names, os.path.join(out_dir, "confusion_matrix.png"))
     
     # Log to W&B
