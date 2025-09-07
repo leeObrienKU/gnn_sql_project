@@ -14,7 +14,7 @@ import pandas as pd
 import networkx as nx
 
 from utils.data_loader import load_employees_db
-from utils.graph_builder import GraphBuilder
+from utils.graph_builder import create_graph
 from models.gnn_model import GNN
 from models.trainer import train_and_evaluate
 
@@ -33,11 +33,6 @@ def main():
     parser.add_argument('--model', type=str, default='GCN',
                         choices=['GCN', 'GAT', 'GraphSAGE'],
                         help='Type of GNN model')
-    
-    # Graph structure
-    parser.add_argument('--graph_type', type=str, default='homogeneous',
-                        choices=['homogeneous', 'heterogeneous'],
-                        help='Type of graph structure to use')
     
     # Original parameters
     parser.add_argument('--epochs', type=int, default=50,
@@ -96,7 +91,7 @@ def main():
             project=args.wandb_project,
             entity=args.wandb_entity,
             config={},
-            name=f"{args.model}-{args.graph_type}"
+            name=f"{args.model}"
         )
     
     # Log parameters
@@ -106,32 +101,23 @@ def main():
     print("\n🔍 Loading and preparing data...")
     employees, departments, dept_emp, dept_manager, titles, salaries = load_employees_db()
     
-    # Build graph based on type
-    print(f"\n🛠️ Building {args.graph_type} graph...")
-    builder = GraphBuilder()
-    
-    if args.graph_type == 'homogeneous':
-        data = builder.create_homogeneous_graph(
-            employees=employees,
-            departments=departments,
-            dept_emp=dept_emp,
-            titles=titles,
-            salaries=salaries,
-            cutoff_date=args.cutoff
-        )
-    else:  # heterogeneous
-        data = builder.create_heterogeneous_graph(
-            employees=employees,
-            departments=departments,
-            dept_emp=dept_emp,
-            titles=titles,
-            salaries=salaries,
-            cutoff_date=args.cutoff
-        )
+    # Build graph
+    print("\n🛠️ Building graph...")
+    data = create_graph(
+        employees=employees,
+        departments=departments,
+        dept_emp=dept_emp,
+        dept_manager=dept_manager,
+        titles=titles,
+        salaries=salaries,
+        task=args.task,
+        cutoff_date=args.cutoff,
+        use_all_history_edges=not args.current_edges_only
+    )
     
     # Create appropriate model
-    input_dim = data.x.shape[1] if hasattr(data, 'x') else data['employee'].x.shape[1]
-    num_classes = 2  # Binary classification for attrition
+    input_dim = data.x.shape[1]
+    num_classes = data.num_classes
     
     model = GNN(
         model_type=args.model,
@@ -145,7 +131,7 @@ def main():
         data,
         num_neighbors=[30, 20],
         batch_size=args.batch_size,
-        input_nodes=data.train_mask if hasattr(data, 'train_mask') else data['employee'].train_mask,
+        input_nodes=data.train_mask,
         shuffle=True
     )
     
@@ -192,7 +178,6 @@ def main():
         test_acc=test_acc,
         model_summary={
             "type": args.model,
-            "graph_type": args.graph_type,
             "input_dim": input_dim,
             "hidden_dim": args.hidden_dim,
             "parameters": sum(p.numel() for p in model.parameters())
@@ -206,7 +191,7 @@ def main():
             pass
     
     print("\n📊 Final Training Summary")
-    print(f"Model: {args.model} on {args.graph_type} graph")
+    print(f"Model: {args.model}")
     print(f"Accuracy: {test_acc:.4f}")
     print(f"Parameters: {sum(p.numel() for p in model.parameters())} total")
 
