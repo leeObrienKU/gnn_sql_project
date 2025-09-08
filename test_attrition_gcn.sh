@@ -17,14 +17,14 @@ python main.py \
   --threshold_mode target_recall \
   --target_recall 0.58 \
   --cutoff 1999-01-01 \
-  --class_weights true \
+  --class_weights \
   --wandb \
   --wandb_project sql_to_gnn \
   --wandb_api_key 16f84cf08205b725a7c2e2a21b572843e5bd1c69
 
 # Configuration explanation:
 # - Earlier cutoff (1999-01-01) for more stable attrition period
-# - Class weights enabled to handle 80/20 imbalance
+# - Class weights enabled (--class_weights flag) to handle 80/20 imbalance
 # - Balanced dropout (0.5) for regularization
 # - Target 58% recall with class-weighted predictions
 # - 3 layers for model capacity
