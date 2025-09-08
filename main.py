@@ -129,6 +129,13 @@ def main():
         num_layers=args.num_layers
     )
     
+    # Enable W&B parameter tracking after model creation
+    if logger.wandb_run is not None:
+        try:
+            wandb.watch(model, log="all", log_freq=100)  # Log gradients and parameters
+        except Exception:
+            pass
+    
     # Training setup
     # Adjust num_neighbors based on num_layers
     num_neighbors = [30] * args.num_layers
