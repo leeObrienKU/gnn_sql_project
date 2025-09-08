@@ -40,7 +40,7 @@ def _evaluate(model, data, mask, threshold: float | None = None):
 def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_threshold: float = 0.5, auto_threshold: bool = False,
                        threshold_mode: str = 'fixed', target_precision: float | None = None, target_recall: float | None = None,
                        lr_decay_type: str = "exponential", lr_decay_gamma: float = 0.95, lr_decay_step_size: int = 20,
-                       patience: int = 20):
+                       patience: int = 20, use_class_weights: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     data = data.to(device)
@@ -56,10 +56,10 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     except Exception:
         scheduler = None
 
-    # Optional: class-weighted loss for imbalanced tasks (enabled for attrition)
+    # Optional: class-weighted loss for imbalanced tasks
     class_weight = None
     try:
-        if getattr(data, "task", None) == "attrition":
+        if use_class_weights and getattr(data, "task", None) == "attrition":
             with torch.no_grad():
                 y_all = data.y.view(-1)
                 is_train = data.train_mask.bool()

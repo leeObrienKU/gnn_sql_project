@@ -61,6 +61,8 @@ def main():
                         help='Prediction task')
     parser.add_argument('--cutoff', type=str, default="2002-12-31",
                         help='Cutoff date YYYY-MM-DD for attrition labeling')
+    parser.add_argument('--class_weights', action='store_true',
+                        help='Enable class weights for imbalanced training')
     parser.add_argument('--current_edges_only', action='store_true',
                         help='Keep only current edges')
     parser.add_argument('--pos_threshold', type=float, default=0.5,
@@ -169,7 +171,8 @@ def main():
         lr_decay_type=args.lr_decay_type,
         lr_decay_gamma=args.lr_decay_gamma,
         lr_decay_step_size=args.lr_decay_step_size,
-        patience=args.patience
+        patience=args.patience,
+        use_class_weights=args.class_weights
     )
     
     # Save plots
