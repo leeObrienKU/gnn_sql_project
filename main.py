@@ -43,6 +43,10 @@ def main():
                         help='Hidden dimension size')
     parser.add_argument('--num_layers', type=int, default=2,
                         help='Number of GNN layers')
+    parser.add_argument('--dropout', type=float, default=0.5,
+                        help='Dropout rate')
+    parser.add_argument('--patience', type=int, default=20,
+                        help='Early stopping patience')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate')
     parser.add_argument('--lr_decay_type', type=str, default='exponential',
@@ -126,7 +130,8 @@ def main():
         input_dim=input_dim,
         hidden_dim=args.hidden_dim,
         output_dim=num_classes,
-        num_layers=args.num_layers
+        num_layers=args.num_layers,
+        dropout=args.dropout
     )
     
     # Enable W&B parameter tracking after model creation
@@ -163,7 +168,8 @@ def main():
         target_recall=args.target_recall,
         lr_decay_type=args.lr_decay_type,
         lr_decay_gamma=args.lr_decay_gamma,
-        lr_decay_step_size=args.lr_decay_step_size
+        lr_decay_step_size=args.lr_decay_step_size,
+        patience=args.patience
     )
     
     # Save plots

@@ -39,7 +39,8 @@ def _evaluate(model, data, mask, threshold: float | None = None):
 
 def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_threshold: float = 0.5, auto_threshold: bool = False,
                        threshold_mode: str = 'fixed', target_precision: float | None = None, target_recall: float | None = None,
-                       lr_decay_type: str = "exponential", lr_decay_gamma: float = 0.95, lr_decay_step_size: int = 20):
+                       lr_decay_type: str = "exponential", lr_decay_gamma: float = 0.95, lr_decay_step_size: int = 20,
+                       patience: int = 20):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     data = data.to(device)
@@ -83,7 +84,6 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
 
     best_val_acc = -1.0
     best_state = None
-    patience = 20
     wait = 0
     
     # Initialize validation accuracy smoothing
