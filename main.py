@@ -45,6 +45,8 @@ def main():
                         help='Number of GNN layers')
     parser.add_argument('--dropout', type=float, default=0.5,
                         help='Dropout rate')
+    parser.add_argument('--num_heads', type=int, default=4,
+                        help='Number of attention heads for GAT')
     parser.add_argument('--patience', type=int, default=20,
                         help='Early stopping patience')
     parser.add_argument('--lr', type=float, default=0.001,
@@ -133,7 +135,8 @@ def main():
         hidden_dim=args.hidden_dim,
         output_dim=num_classes,
         num_layers=args.num_layers,
-        dropout=args.dropout
+        dropout=args.dropout,
+        num_heads=args.num_heads
     )
     
     # Enable W&B parameter tracking after model creation

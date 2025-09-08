@@ -5,19 +5,15 @@ python main.py \
   --model GAT \
   --epochs 150 \
   --batch_size 4096 \
-  --hidden_dim 128 \
+  --hidden_dim 64 \
   --num_layers 3 \
   --num_heads 4 \
-  --concat_heads \
-  --residual \
-  --feat_dropout 0.5 \
-  --attn_dropout 0.3 \
+  --dropout 0.6 \
+  --patience 30 \
   --lr 0.001 \
-  --lr_warmup_epochs 10 \
-  --lr_decay_type cosine \
+  --lr_decay_type step \
+  --lr_decay_step_size 12 \
   --lr_decay_gamma 0.85 \
-  --gradient_clip 1.0 \
-  --weight_decay 0.01 \
   --task attrition \
   --threshold_mode target_recall \
   --target_recall 0.58 \
@@ -28,32 +24,28 @@ python main.py \
   --wandb_api_key 16f84cf08205b725a7c2e2a21b572843e5bd1c69
 
 # Configuration explanation:
-# 1. Architecture Enhancements:
+# 1. Architecture:
 #    - 4 attention heads per layer
-#    - Concatenated head outputs
-#    - Residual connections
-#    - 3 layers with 128 hidden dims
+#    - Reduced base hidden dim (64) as it gets multiplied by num_heads
+#    - Effective hidden dim: 64 * 4 = 256 after concatenation
+#    - Deeper network (3 layers)
+#    - Higher dropout (0.6) for regularization
 #
-# 2. Regularization Strategy:
-#    - Feature dropout: 0.5
-#    - Attention dropout: 0.3
-#    - Weight decay: 0.01
-#    - Gradient clipping: 1.0
+# 2. Training:
+#    - Larger batch size (4096) for stability
+#    - Higher initial LR (0.001)
+#    - Step decay every 12 epochs
+#    - Gamma 0.85 for gradual decay
+#    - Early stopping patience 30
 #
-# 3. Learning Rate Schedule:
-#    - Higher initial LR: 0.001
-#    - 10 epoch warmup
-#    - Cosine decay
-#    - Gamma: 0.85
-#
-# 4. Training Dynamics:
-#    - Larger batch size: 4096
-#    - Class weights enabled
-#    - Target recall: 0.58 (balanced)
+# 3. Task Settings:
+#    - Class weights for imbalance
+#    - Target recall 0.58 (balanced)
+#    - 1999-01-01 cutoff (stable period)
 #
 # Expected improvements:
-# - Better feature extraction (multiple heads)
-# - More stable training (warmup + cosine)
-# - Better generalization (dropouts + weight decay)
-# - Faster convergence (residual + larger batch)
-# - More balanced precision-recall
+# - Better feature learning (4 attention perspectives)
+# - More stable training (larger batch + step decay)
+# - Better generalization (higher dropout)
+# - More balanced metrics (target recall 0.58)
+# - Handling class imbalance (weights + cutoff)

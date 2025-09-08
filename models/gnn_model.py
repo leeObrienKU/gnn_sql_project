@@ -3,11 +3,12 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATConv, SAGEConv
 
 class GNN(torch.nn.Module):
-    def __init__(self, model_type='GCN', input_dim=4, hidden_dim=64, output_dim=2, num_layers=2, dropout=0.5):
+    def __init__(self, model_type='GCN', input_dim=4, hidden_dim=64, output_dim=2, num_layers=2, dropout=0.5, num_heads=4):
         super().__init__()
         self.model_type = model_type
         self.num_layers = num_layers
         self.dropout_rate = dropout  # Store dropout rate
+        self.num_heads = num_heads  # Store number of attention heads
         
         # Create list to hold all layers
         self.convs = torch.nn.ModuleList()
@@ -16,8 +17,8 @@ class GNN(torch.nn.Module):
         if model_type == 'GCN':
             self.convs.append(GCNConv(input_dim, hidden_dim))
         elif model_type == 'GAT':
-            self.convs.append(GATConv(input_dim, hidden_dim, heads=2, dropout=dropout))
-            hidden_dim = hidden_dim * 2  # Account for concatenated heads
+            self.convs.append(GATConv(input_dim, hidden_dim, heads=self.num_heads, dropout=dropout))
+            hidden_dim = hidden_dim * self.num_heads  # Account for concatenated heads
         elif model_type == 'GraphSAGE':
             self.convs.append(SAGEConv(input_dim, hidden_dim))
             
@@ -26,8 +27,8 @@ class GNN(torch.nn.Module):
             if model_type == 'GCN':
                 self.convs.append(GCNConv(hidden_dim, hidden_dim))
             elif model_type == 'GAT':
-                self.convs.append(GATConv(hidden_dim, hidden_dim, heads=2, dropout=dropout))
-                hidden_dim = hidden_dim * 2
+                self.convs.append(GATConv(hidden_dim, hidden_dim, heads=self.num_heads, dropout=dropout))
+                hidden_dim = hidden_dim * self.num_heads
             elif model_type == 'GraphSAGE':
                 self.convs.append(SAGEConv(hidden_dim, hidden_dim))
                 
