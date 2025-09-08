@@ -238,27 +238,29 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             from sklearn.metrics import roc_auc_score
             auc_score = roc_auc_score(y_true_auc, y_scores_auc)
 
-            # Save ROC curve
+            # Save ROC curve and compute AUC
             from utils.plots import plot_roc_curve, plot_pr_curve
             out_dir = getattr(logger, "log_dir", "experiment_logs")
             os.makedirs(out_dir, exist_ok=True)
+            
             roc_path = os.path.join(out_dir, "roc_curve.png")
-            plot_roc_curve(y_true_auc, y_scores_auc, roc_path)
+            try:
+                roc_path, auc_score = plot_roc_curve(y_true_auc, y_scores_auc, roc_path)
+                logger.metrics["test_auc_roc"] = float(auc_score)
+                print(f"🧪  Test AUC-ROC: {auc_score:.4f}")
+            except Exception as e:
+                print(f"Warning: Could not generate ROC curve: {str(e)}")
+                pass
 
             # Save PR curve and compute AUPRC
             pr_path = os.path.join(out_dir, "pr_curve.png")
             try:
-                from sklearn.metrics import average_precision_score
-                ap = average_precision_score(y_true_auc, y_scores_auc)
-                plot_pr_curve(y_true_auc, y_scores_auc, pr_path)
+                pr_path, ap = plot_pr_curve(y_true_auc, y_scores_auc, pr_path)
                 logger.metrics["test_auprc"] = float(ap)
                 print(f"🧪  Test AUPRC: {ap:.4f}")
-            except Exception:
+            except Exception as e:
+                print(f"Warning: Could not generate PR curve: {str(e)}")
                 pass
-
-            # Log
-            logger.metrics["test_auc_roc"] = float(auc_score)
-            print(f"🧪  Test AUC-ROC: {auc_score:.4f}")
 
             # W&B logging (if enabled)
             if getattr(logger, "wandb_run", None) is not None:

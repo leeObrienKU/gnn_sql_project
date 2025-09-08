@@ -73,8 +73,14 @@ def plot_confusion_matrix(cm, class_names, out_path, normalize=False):
     
     return out_path
 
-def plot_roc_curve(fpr, tpr, roc_auc, out_path):
+def plot_roc_curve(y_true, y_scores, out_path):
     """Plot ROC curve with consistent naming"""
+    from sklearn.metrics import roc_curve, roc_auc_score
+    
+    # Calculate ROC curve and AUC
+    fpr, tpr, _ = roc_curve(y_true, y_scores)
+    roc_auc = roc_auc_score(y_true, y_scores)
+    
     plt.figure(figsize=(8, 6))
     plt.plot(fpr, tpr, color='#e74c3c', lw=2,
              label=f'ROC curve (AUC = {roc_auc:.2f})')
@@ -90,7 +96,7 @@ def plot_roc_curve(fpr, tpr, roc_auc, out_path):
     plt.savefig(out_path)
     plt.close()
     
-    return out_path
+    return out_path, roc_auc
 
 def plot_pr_curve(y_true, y_scores, out_path):
     """Plot Precision-Recall curve with consistent naming"""
