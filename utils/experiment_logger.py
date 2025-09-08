@@ -59,17 +59,19 @@ class ExperimentLogger:
         if self.wandb_run is not None:
             self.wandb_run.config.update(params, allow_val_change=True)
 
-    def log_metrics(self, epoch, train_loss, val_acc, lr, val_f1=None):
+    def log_metrics(self, epoch, train_loss, val_acc, lr, val_f1=None, raw_val_acc=None):
         """Log training metrics for each epoch"""
         entry = {
             "epoch": epoch,
             "train_loss": float(train_loss),
-            "val_acc": float(val_acc),
+            "val_acc": float(val_acc),  # This is now smoothed accuracy
             "lr": float(lr),
             "timestamp": time.time()
         }
         if val_f1 is not None:
             entry["val_f1_macro"] = float(val_f1)
+        if raw_val_acc is not None:
+            entry["raw_val_acc"] = float(raw_val_acc)
         
         self.metrics["training"].append(entry)
         
@@ -78,15 +80,21 @@ class ExperimentLogger:
         with open(metrics_file, 'w') as f:
             json.dump(self.metrics["training"], f, indent=2)
         
-        print(f"⏱️ Epoch {epoch:03d} | Loss: {train_loss:.4f} | Acc: {val_acc:.4f} | LR: {lr:.6f}")
+        # Print metrics (show both raw and smoothed if available)
+        if raw_val_acc is not None:
+            print(f"⏱️ Epoch {epoch:03d} | Loss: {train_loss:.4f} | Raw Acc: {raw_val_acc:.4f} | Smoothed Acc: {val_acc:.4f} | LR: {lr:.6f}")
+        else:
+            print(f"⏱️ Epoch {epoch:03d} | Loss: {train_loss:.4f} | Acc: {val_acc:.4f} | LR: {lr:.6f}")
         
         if self.wandb_run is not None:
             log_obj = {
                 "epoch": epoch,
                 "train/loss": train_loss,
-                "val/acc": val_acc,
+                "val/smoothed_acc": val_acc,
                 "lr": lr
             }
+            if raw_val_acc is not None:
+                log_obj["val/raw_acc"] = raw_val_acc
             if val_f1 is not None:
                 log_obj["val/f1_macro"] = val_f1
             self.wandb_run.log(log_obj)
