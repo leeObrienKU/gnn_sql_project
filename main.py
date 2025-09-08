@@ -41,6 +41,8 @@ def main():
                         help='Batch size for neighbor sampling')
     parser.add_argument('--hidden_dim', type=int, default=64,
                         help='Hidden dimension size')
+    parser.add_argument('--num_layers', type=int, default=2,
+                        help='Number of GNN layers')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate')
     parser.add_argument('--lr_decay_type', type=str, default='exponential',
@@ -123,13 +125,16 @@ def main():
         model_type=args.model,
         input_dim=input_dim,
         hidden_dim=args.hidden_dim,
-        output_dim=num_classes
+        output_dim=num_classes,
+        num_layers=args.num_layers
     )
     
     # Training setup
+    # Adjust num_neighbors based on num_layers
+    num_neighbors = [30] * args.num_layers
     train_loader = NeighborLoader(
         data,
-        num_neighbors=[30, 20],
+        num_neighbors=num_neighbors,
         batch_size=args.batch_size,
         input_nodes=data.train_mask,
         shuffle=True
