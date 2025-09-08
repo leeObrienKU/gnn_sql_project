@@ -171,7 +171,7 @@ def main():
     plot_training_curves(logger.metrics["training"], out_dir)
     cm = np.array(logger.metrics.get("confusion_matrix", [[0, 0], [0, 0]]))
     class_names = ["Stay", "Leave"]
-    plot_confusion_matrix(cm, class_names, os.path.join(out_dir, "confusion_matrix.png"))
+    cm_path, cm_norm_path = plot_confusion_matrix(cm, class_names, os.path.join(out_dir, "confusion_matrix.png"))
     
     # Log to W&B
     if logger.wandb_run is not None:
@@ -179,7 +179,8 @@ def main():
             logger.wandb_run.log({
                 "plots/training_loss": wandb.Image(os.path.join(out_dir, "training_loss.png")),
                 "plots/val_accuracy": wandb.Image(os.path.join(out_dir, "val_accuracy.png")),
-                "plots/confusion_matrix": wandb.Image(os.path.join(out_dir, "confusion_matrix.png")),
+                "plots/confusion_matrix": wandb.Image(cm_path),
+                "plots/confusion_matrix_normalized": wandb.Image(cm_norm_path),
                 "confusion_matrix/raw": cm
             })
         except Exception:

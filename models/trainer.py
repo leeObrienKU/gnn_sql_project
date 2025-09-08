@@ -225,6 +225,16 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
 
     print(f"🧪  Test Accuracy: {test_acc:.4f}")
     print(f"🧪  Test F1 (macro): {test_f1:.4f}")
+    
+    # Print confusion matrix details
+    tn, fp, fn, tp = cm.ravel()
+    total = cm.sum()
+    print(f"\n📊 Confusion Matrix Details:")
+    print(f"Total Samples: {total}")
+    print(f"True Negatives: {tn} ({tn/total*100:.1f}%)")
+    print(f"False Positives: {fp} ({fp/total*100:.1f}%)")
+    print(f"False Negatives: {fn} ({fn/total*100:.1f}%)")
+    print(f"True Positives: {tp} ({tp/total*100:.1f}%)")
 
     # AUC-ROC + ROC/PR curves (attrition only)
     try:

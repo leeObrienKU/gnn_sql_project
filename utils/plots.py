@@ -57,21 +57,34 @@ def plot_confusion_matrix(cm, class_names, out_path, normalize=False):
         out_path: path to save the plot
         normalize: whether to normalize the confusion matrix
     """
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    
+    # Create regular confusion matrix
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='.2f' if normalize else 'd',
+    sns.heatmap(cm, annot=True, fmt='d',
                 xticklabels=class_names, yticklabels=class_names,
                 cmap='YlOrRd')
-    plt.title("Confusion Matrix")
+    plt.title("Confusion Matrix (Counts)")
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
     plt.tight_layout()
     plt.savefig(out_path)
     plt.close()
     
-    return out_path
+    # Create normalized confusion matrix
+    cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    norm_path = out_path.replace('.png', '_normalized.png')
+    
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm_norm, annot=True, fmt='.2%',  # Show as percentage
+                xticklabels=class_names, yticklabels=class_names,
+                cmap='YlOrRd')
+    plt.title("Confusion Matrix (Normalized by Row)")
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.tight_layout()
+    plt.savefig(norm_path)
+    plt.close()
+    
+    return out_path, norm_path
 
 def plot_roc_curve(y_true, y_scores, out_path):
     """Plot ROC curve with consistent naming"""
