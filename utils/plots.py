@@ -16,7 +16,8 @@ def plot_training_curves(training_log, out_dir):
     
     epochs = [e["epoch"] for e in training_log]
     train_loss = [e["train_loss"] for e in training_log]
-    val_acc = [e["val_acc"] for e in training_log]
+    val_acc = [e["val_acc"] for e in training_log]  # This is now the smoothed accuracy
+    raw_val_acc = [e.get("raw_val_acc", e["val_acc"]) for e in training_log]  # Get raw if available
     
     # Loss curve
     plt.figure(figsize=(10, 6))
@@ -33,7 +34,8 @@ def plot_training_curves(training_log, out_dir):
     
     # Val accuracy curve
     plt.figure(figsize=(10, 6))
-    plt.plot(epochs, val_acc, label="Val Accuracy", color='#3498db')
+    plt.plot(epochs, raw_val_acc, label="Raw Val Accuracy", color='#3498db', alpha=0.3, linestyle='--')
+    plt.plot(epochs, val_acc, label="Smoothed Val Accuracy", color='#3498db', linewidth=2)
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.title("Validation Accuracy")

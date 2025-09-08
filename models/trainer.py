@@ -85,6 +85,10 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     best_state = None
     patience = 20
     wait = 0
+    
+    # Initialize validation accuracy smoothing
+    val_acc_window = []
+    smoothing_window = 3  # Number of epochs to average over
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -124,9 +128,16 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
 
         # Validation on the full graph (use argmax during training for stability); also compute F1 for logging
         val_acc, val_f1, _, _, _ = _evaluate(model, data, data.val_mask, None)
+        
+        # Smooth validation accuracy
+        val_acc_window.append(val_acc)
+        if len(val_acc_window) > smoothing_window:
+            val_acc_window.pop(0)
+        smoothed_val_acc = sum(val_acc_window) / len(val_acc_window)
 
-        # Log
-        logger.log_metrics(epoch, epoch_loss, val_acc, optimizer.param_groups[0]["lr"], val_f1=val_f1)
+        # Log both raw and smoothed metrics
+        logger.log_metrics(epoch, epoch_loss, smoothed_val_acc, optimizer.param_groups[0]["lr"], 
+                         val_f1=val_f1, raw_val_acc=val_acc)
 
         # LR scheduler step (advance for next epoch)
         if scheduler is not None:
@@ -135,16 +146,16 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             except Exception:
                 pass
 
-        # Early stopping
-        improved = val_acc > best_val_acc + 1e-6
+        # Early stopping (use smoothed accuracy)
+        improved = smoothed_val_acc > best_val_acc + 1e-6
         if improved:
-            best_val_acc = val_acc
+            best_val_acc = smoothed_val_acc
             best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
             wait = 0
         else:
             wait += 1
             if wait >= patience:
-                print(f"⛔  Early stop at epoch {epoch} (best val={best_val_acc:.4f})")
+                print(f"⛔  Early stop at epoch {epoch} (best smoothed val={best_val_acc:.4f})")
                 break
 
     # Load best model
