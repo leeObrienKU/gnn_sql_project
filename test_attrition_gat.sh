@@ -4,15 +4,20 @@ cd /content/gnn_sql_project
 python main.py \
   --model GAT \
   --epochs 150 \
-  --batch_size 2048 \
+  --batch_size 4096 \
   --hidden_dim 128 \
   --num_layers 3 \
-  --dropout 0.6 \
-  --patience 30 \
+  --num_heads 4 \
+  --concat_heads \
+  --residual \
+  --feat_dropout 0.5 \
+  --attn_dropout 0.3 \
   --lr 0.001 \
-  --lr_decay_type step \
-  --lr_decay_step_size 12 \
+  --lr_warmup_epochs 10 \
+  --lr_decay_type cosine \
   --lr_decay_gamma 0.85 \
+  --gradient_clip 1.0 \
+  --weight_decay 0.01 \
   --task attrition \
   --threshold_mode target_recall \
   --target_recall 0.58 \
@@ -23,22 +28,32 @@ python main.py \
   --wandb_api_key 16f84cf08205b725a7c2e2a21b572843e5bd1c69
 
 # Configuration explanation:
-# GAT-specific choices:
-# - Smaller hidden_dim (128) as each head multiplies parameters
-# - Higher dropout (0.6) for attention mechanism
-# - Lower learning rate (0.001) for stability
-# - Moderate batch size (2048) for attention computation
-# - 3 layers with attention at each level
-# 
-# Keeping successful strategies:
-# - 1999-01-01 cutoff for stable period
-# - Class weights for 80/20 imbalance
-# - Target 58% recall for balance
-# - Step decay with shorter steps (12)
-# 
-# Architecture differences:
-# - GAT uses attention mechanisms
-# - Multiple attention heads per layer
-# - More parameters per layer than GCN
-# - More sensitive to learning rate
-# - Benefits from higher dropout
+# 1. Architecture Enhancements:
+#    - 4 attention heads per layer
+#    - Concatenated head outputs
+#    - Residual connections
+#    - 3 layers with 128 hidden dims
+#
+# 2. Regularization Strategy:
+#    - Feature dropout: 0.5
+#    - Attention dropout: 0.3
+#    - Weight decay: 0.01
+#    - Gradient clipping: 1.0
+#
+# 3. Learning Rate Schedule:
+#    - Higher initial LR: 0.001
+#    - 10 epoch warmup
+#    - Cosine decay
+#    - Gamma: 0.85
+#
+# 4. Training Dynamics:
+#    - Larger batch size: 4096
+#    - Class weights enabled
+#    - Target recall: 0.58 (balanced)
+#
+# Expected improvements:
+# - Better feature extraction (multiple heads)
+# - More stable training (warmup + cosine)
+# - Better generalization (dropouts + weight decay)
+# - Faster convergence (residual + larger batch)
+# - More balanced precision-recall
