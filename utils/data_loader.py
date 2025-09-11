@@ -66,13 +66,13 @@ def load_employees_db():
             try:
                 data[name] = pd.read_sql(query, engine)
                 if data[name].empty:
-                    print(f"⚠️  Empty result for {name}")
+                    print(f"Warning: Empty result for {name}")
             except SQLAlchemyError as e:
-                print(f"⚠️  Couldn't load {name}: {str(e)}")
+                print(f"Warning: Couldn't load {name}: {str(e)}")
                 data[name] = pd.DataFrame(columns=query.split('SELECT ')[1].split('FROM')[0].replace('\n', '').replace(' ', '').split(','))
 
         # Debug output
-        print("\n📦 Loaded Data Summary:")
+        print("\nLoaded Data Summary:")
         for name, df in data.items():
             print(f"{name:12s}: {df.shape[0]:6d} rows | Columns: {list(df.columns)}")
 
@@ -86,5 +86,5 @@ def load_employees_db():
         )
 
     except Exception as e:
-        print(f"\n❌ Critical Error: {str(e)}")
+        print(f"\nCritical Error: {str(e)}")
         raise

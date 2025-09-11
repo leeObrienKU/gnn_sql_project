@@ -21,7 +21,7 @@ class InteractiveGraphVisualizer:
         
     def load_and_build_graph(self, cutoff_date="2002-12-31", max_employees=1000):
         """Load data and build graph with sample size limit for visualization"""
-        print("🔄 Loading database and building graph...")
+        print("Loading database and building graph...")
         
         # Load data
         employees, departments, dept_emp, dept_manager, titles, salaries = load_employees_db()
@@ -37,7 +37,7 @@ class InteractiveGraphVisualizer:
             salaries = salaries[salaries['emp_no'].isin(emp_ids)]
             employees = sample_employees
             
-            print(f"📊 Sampled {max_employees} employees for visualization")
+            print(f"Sampled {max_employees} employees for visualization")
         
         # Build graph
         self.graph = create_graph(
@@ -52,7 +52,7 @@ class InteractiveGraphVisualizer:
         self.employee_data = employees
         self.department_data = departments
         
-        print(f"✅ Graph built with {self.nx_graph.number_of_nodes()} nodes and {self.nx_graph.number_of_edges()} edges")
+        print(f"Graph built with {self.nx_graph.number_of_nodes()} nodes and {self.nx_graph.number_of_edges()} edges")
         return self.nx_graph
     
     def create_static_visualization(self, figsize=(15, 10), node_size=100, alpha=0.7):
@@ -261,7 +261,7 @@ def create_streamlit_app():
     cutoff_date = st.sidebar.text_input("Cutoff Date", value="2002-12-31", help="Date to separate stayers from leavers")
     max_employees = st.sidebar.slider("Max Employees to Visualize", min_value=100, max_value=2000, value=500, step=100)
     
-    if st.sidebar.button("🔄 Build Graph"):
+    if st.sidebar.button("Build Graph"):
         with st.spinner("Building graph..."):
             visualizer = InteractiveGraphVisualizer()
             graph = visualizer.load_and_build_graph(cutoff_date, max_employees)
@@ -273,7 +273,7 @@ def create_streamlit_app():
         visualizer = st.session_state.visualizer
         
         # Tabs for different visualizations
-        tab1, tab2, tab3 = st.tabs(["📊 Interactive Graph", "📈 Network Analysis", "🖼️ Static View"])
+        tab1, tab2, tab3 = st.tabs(["Interactive Graph", "Network Analysis", "Static View"])
         
         with tab1:
             st.header("Interactive Graph Visualization")
