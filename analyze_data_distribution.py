@@ -35,13 +35,13 @@ def connect_to_db():
         for params in connection_params:
             try:
                 conn = psycopg2.connect(**params)
-                print(f"✅ Connected to PostgreSQL at {params['host']}")
+                print(f"Connected to PostgreSQL at {params['host']}")
                 return conn
             except Exception as e:
                 last_error = e
                 continue
         
-        print("❌ Failed to connect to database:")
+        print("Failed to connect to database:")
         print(f"   • Last error: {last_error}")
         print("   • Tried connecting to:")
         for params in connection_params:
@@ -49,13 +49,13 @@ def connect_to_db():
         return None
         
     except Exception as e:
-        print(f"❌ Unexpected database error: {e}")
+        print(f"Unexpected database error: {e}")
         return None
 
 def analyze_attrition_patterns(cur):
     """Analyze overall attrition patterns"""
     print("\n" + "=" * 80)
-    print("🚪 ATTRITION ANALYSIS")
+    print("ATTRITION ANALYSIS")
     print("=" * 80)
     
     # Get overall employment status
@@ -86,7 +86,7 @@ def analyze_attrition_patterns(cur):
     
     status_stats = cur.fetchall()
     
-    print("📊 Employment Status Distribution:")
+    print("Employment Status Distribution:")
     print(tabulate([(stat[0], stat[1], f"{stat[2]}%", f"{stat[3]:.1f}", f"{stat[4]:.1f}", 
                     stat[5], stat[6], f"{stat[5]/(stat[5]+stat[6])*100:.1f}%")
                    for stat in status_stats],
@@ -122,7 +122,7 @@ def analyze_attrition_patterns(cur):
     """)
     
     yearly_stats = cur.fetchall()
-    print("\n📈 Yearly Attrition Patterns:")
+    print("\nYearly Attrition Patterns:")
     print(tabulate(yearly_stats, 
                   headers=["Year", "Leavers", "Depts Affected", "Avg Tenure", "Attrition Rate (%)"],
                   tablefmt="grid"))
@@ -156,7 +156,7 @@ def analyze_attrition_patterns(cur):
     """)
     
     dept_stats = cur.fetchall()
-    print("\n📊 Department-wise Attrition:")
+    print("\nDepartment-wise Attrition:")
     print(tabulate(dept_stats,
                   headers=["Department", "Total", "Current", "Former", "Avg Tenure", "Turnover Rate (%)"],
                   tablefmt="grid"))
@@ -166,7 +166,7 @@ def analyze_attrition_patterns(cur):
     former = next(stat for stat in status_stats if stat[0] == 'Former')
     total = current[1] + former[1]
     
-    print("\n📈 Key Metrics:")
+    print("\nKey Metrics:")
     print(f"  • Overall Turnover Rate: {(former[1]/total*100):.1f}%")
     print(f"  • Average Tenure at Exit: {np.mean([stat[3] for stat in yearly_stats]):.1f} years")
     print(f"  • Most Affected Department: {dept_stats[0][0]} ({dept_stats[0][5]:.1f}% turnover)")
@@ -177,7 +177,7 @@ def analyze_attrition_patterns(cur):
 def analyze_temporal_distribution(cur, output_dir):
     """Analyze the temporal distribution of all events in the database"""
     print("\n" + "=" * 80)
-    print("📊 TEMPORAL DISTRIBUTION ANALYSIS")
+    print("TEMPORAL DISTRIBUTION ANALYSIS")
     print("=" * 80)
     
     # Create figure for temporal distributions
@@ -195,7 +195,7 @@ def analyze_temporal_distribution(cur, output_dir):
     """)
     emp_range = cur.fetchone()
     
-    print("\n📅 Employment Timeline:")
+    print("\nEmployment Timeline:")
     print(f"  • Data Range: {emp_range[0]} to {emp_range[1]}")
     print(f"  • Total Employment Records: {emp_range[2]:,}")
     print(f"  • Unique Employees: {emp_range[3]:,}")
@@ -322,7 +322,7 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.savefig(os.path.join(output_dir, 'employment_duration.png'))
     plt.close()
     
-    print("\n📊 Employment Duration Statistics:")
+    print("\nEmployment Duration Statistics:")
     # Calculate weighted average
     avg_duration = np.average(duration_dist['years'], weights=duration_dist['count'])
     
@@ -342,7 +342,7 @@ def analyze_temporal_distribution(cur, output_dir):
 def analyze_department_patterns(cur, output_dir):
     """Analyze department-specific patterns"""
     print("\n" + "=" * 80)
-    print("🏢 DEPARTMENT ANALYSIS")
+    print("DEPARTMENT ANALYSIS")
     print("=" * 80)
     
     # Department size and stability
@@ -408,7 +408,7 @@ def analyze_department_patterns(cur, output_dir):
 def analyze_salary_patterns(cur, output_dir):
     """Analyze salary patterns and growth"""
     print("\n" + "=" * 80)
-    print("💰 SALARY ANALYSIS")
+    print("SALARY ANALYSIS")
     print("=" * 80)
     
     # Overall salary trends
@@ -482,7 +482,7 @@ def check_requirements():
         'psycopg2': 'psycopg2-binary',
         'tabulate': 'tabulate'
     }
-    print("📦 Checking required packages...")
+    print("Checking required packages...")
     
     import subprocess
     import sys
@@ -548,7 +548,7 @@ def main():
         output_dir = os.path.join(output_base, f"data_analysis_{timestamp}")
         os.makedirs(output_dir, exist_ok=True)
         
-        print(f"\n📁 Output will be saved to: {output_dir}")
+        print(f"\nOutput will be saved to: {output_dir}")
         
         # Connect to database
         conn = connect_to_db()
@@ -556,8 +556,8 @@ def main():
             raise RuntimeError("Failed to connect to database")
 
         cur = conn.cursor()
-        print("✅ Connected to PostgreSQL")
-        print("🔍 Running comprehensive data analysis...\n")
+        print("Connected to PostgreSQL")
+        print("Running comprehensive data analysis...\n")
         
         # Initialize visualizer
         viz = EDAVisualizer(output_dir)
@@ -569,7 +569,7 @@ def main():
             cur.execute(f"SELECT COUNT(*) FROM employees.{table}")
             count = cur.fetchone()[0]
             tables_info[table] = {'count': count}
-            print(f"📊 {table}: {count:,} records")
+            print(f"{table}: {count:,} records")
         
         # Create entity relationship diagram
         viz.plot_entity_relationships(tables_info)
@@ -623,9 +623,9 @@ def main():
         save_analysis_summary(output_dir, output_content)
         
         # Print final messages to actual stdout
-        print("\n✨ Analysis complete!")
-        print(f"📁 Results saved to: {output_dir}")
-        print(f"📊 View the full report at: {os.path.join(output_dir, f'eda_report_{viz.timestamp}.html')}")
+        print("\nAnalysis complete!")
+        print(f"Results saved to: {output_dir}")
+        print(f"View the full report at: {os.path.join(output_dir, f'eda_report_{viz.timestamp}.html')}")
         
     finally:
         if conn:
