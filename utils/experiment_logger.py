@@ -52,7 +52,7 @@ class ExperimentLogger:
             json.dump(params, f, indent=2)
         
         # Print parameters
-        print(f"\n⚙️ Experiment Parameters:")
+        print(f"\nExperiment Parameters:")
         for k, v in params.items():
             print(f"{k:>20}: {v}")
         
@@ -82,9 +82,9 @@ class ExperimentLogger:
         
         # Print metrics (show both raw and smoothed if available)
         if raw_val_acc is not None:
-            print(f"⏱️ Epoch {epoch:03d} | Loss: {train_loss:.4f} | Raw Acc: {raw_val_acc:.4f} | Smoothed Acc: {val_acc:.4f} | LR: {lr:.6f}")
+            print(f"Epoch {epoch:03d} | Loss: {train_loss:.4f} | Raw Acc: {raw_val_acc:.4f} | Smoothed Acc: {val_acc:.4f} | LR: {lr:.6f}")
         else:
-            print(f"⏱️ Epoch {epoch:03d} | Loss: {train_loss:.4f} | Acc: {val_acc:.4f} | LR: {lr:.6f}")
+            print(f"Epoch {epoch:03d} | Loss: {train_loss:.4f} | Acc: {val_acc:.4f} | LR: {lr:.6f}")
         
         if self.wandb_run is not None:
             log_obj = {
@@ -189,9 +189,9 @@ class ExperimentLogger:
             df = df_row
         df.to_csv(master_file, index=False)
         
-        print(f"\n✅ Experiment complete in {runtime:.2f} seconds")
-        print(f"📊 Results saved to {self.log_dir}")
-        print(f"📈 Performance summary saved to {summary_file}")
+        print(f"\nExperiment complete in {runtime:.2f} seconds")
+        print(f"Results saved to {self.log_dir}")
+        print(f"Performance summary saved to {summary_file}")
         
         if self.wandb_run is not None:
             self.wandb_run.summary["test/acc"] = float(test_acc)

@@ -108,11 +108,11 @@ def main():
     logger.log_params(vars(args))
     
     # Load data
-    print("\n🔍 Loading and preparing data...")
+    print("\nLoading and preparing data...")
     employees, departments, dept_emp, dept_manager, titles, salaries = load_employees_db()
     
     # Build graph
-    print("\n🛠️ Building graph...")
+    print("\nBuilding graph...")
     data = create_graph(
         employees=employees,
         departments=departments,
@@ -215,7 +215,7 @@ def main():
         except Exception:
             pass
     
-    print("\n📊 Final Training Summary")
+    print("\nFinal Training Summary")
     print(f"Model: {args.model}")
     print(f"Accuracy: {test_acc:.4f}")
     print(f"Parameters: {sum(p.numel() for p in model.parameters())} total")

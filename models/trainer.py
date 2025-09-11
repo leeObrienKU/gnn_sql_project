@@ -155,7 +155,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
         else:
             wait += 1
             if wait >= patience:
-                print(f"⛔  Early stop at epoch {epoch} (best smoothed val={best_val_acc:.4f})")
+                print(f"Early stop at epoch {epoch} (best smoothed val={best_val_acc:.4f})")
                 break
 
     # Load best model
@@ -223,13 +223,13 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     logger.metrics["test_f1_macro"] = float(test_f1)
     logger.metrics["confusion_matrix"] = cm.astype(int).tolist()
 
-    print(f"🧪  Test Accuracy: {test_acc:.4f}")
-    print(f"🧪  Test F1 (macro): {test_f1:.4f}")
+    print(f"Test Accuracy: {test_acc:.4f}")
+    print(f"Test F1 (macro): {test_f1:.4f}")
     
     # Print confusion matrix details
     tn, fp, fn, tp = cm.ravel()
     total = cm.sum()
-    print(f"\n📊 Confusion Matrix Details:")
+    print(f"\nConfusion Matrix Details:")
     print(f"Total Samples: {total}")
     print(f"True Negatives: {tn} ({tn/total*100:.1f}%)")
     print(f"False Positives: {fp} ({fp/total*100:.1f}%)")
@@ -257,7 +257,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             try:
                 roc_path, auc_score = plot_roc_curve(y_true_auc, y_scores_auc, roc_path)
                 logger.metrics["test_auc_roc"] = float(auc_score)
-                print(f"🧪  Test AUC-ROC: {auc_score:.4f}")
+                print(f"Test AUC-ROC: {auc_score:.4f}")
             except Exception as e:
                 print(f"Warning: Could not generate ROC curve: {str(e)}")
                 pass
@@ -267,7 +267,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             try:
                 pr_path, ap = plot_pr_curve(y_true_auc, y_scores_auc, pr_path)
                 logger.metrics["test_auprc"] = float(ap)
-                print(f"🧪  Test AUPRC: {ap:.4f}")
+                print(f"Test AUPRC: {ap:.4f}")
             except Exception as e:
                 print(f"Warning: Could not generate PR curve: {str(e)}")
                 pass
@@ -301,9 +301,9 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             logger.metrics["test_specificity"] = float(specificity)
             
             # Print to console
-            print(f"🧪  Test Precision: {precision:.4f}")
-            print(f"🧪  Test Recall: {recall:.4f}")
-            print(f"🧪  Test Specificity: {specificity:.4f}")
+            print(f"Test Precision: {precision:.4f}")
+            print(f"Test Recall: {recall:.4f}")
+            print(f"Test Specificity: {specificity:.4f}")
             
             # W&B logging (if enabled)
             if getattr(logger, "wandb_run", None) is not None:
