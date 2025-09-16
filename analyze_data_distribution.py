@@ -623,7 +623,7 @@ def main():
         save_analysis_summary(output_dir, output_content)
         
         # Print final messages to actual stdout
-        print("\Analysis complete!")
+        print("Analysis complete!")
         print(f"Results saved to: {output_dir}")
         print(f"View the full report at: {os.path.join(output_dir, f'eda_report_{viz.timestamp}.html')}")
         
