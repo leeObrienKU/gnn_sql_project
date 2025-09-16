@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Run visualization
-echo "🎨 Creating graph visualization..."
+echo "Creating graph visualization..."
 echo "• Cutoff date: $CUTOFF_DATE"
 echo "• Sample size: $MAX_EMPLOYEES employees"
 echo "• Output file: $OUTPUT_FILE"
@@ -57,4 +57,4 @@ plt = visualize_graph_simple(
 plt.savefig('$OUTPUT_FILE', dpi=300, bbox_inches='tight')
 EOF
 
-echo "✅ Graph saved as $OUTPUT_FILE"
+echo "Graph saved as $OUTPUT_FILE"

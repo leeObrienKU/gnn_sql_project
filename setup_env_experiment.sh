@@ -56,10 +56,4 @@ chmod 777 experiment_logs
 chmod 777 data
 chmod 777 data/*
 
-print_header "Setup complete!"
-echo "You can now run the experiments using:"
-echo "  • GCN:      !bash test_attrition_gcn.sh"
-echo "  • GAT:      !bash test_attrition_gat.sh"
-echo "  • GraphSAGE: !bash test_attrition_graphsage.sh"
-echo
-echo "Results will be saved in the experiment_logs directory."
+

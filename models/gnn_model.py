@@ -40,7 +40,7 @@ class GNN(torch.nn.Module):
         elif model_type == 'GraphSAGE':
             self.convs.append(SAGEConv(hidden_dim, output_dim))
             
-        # Remove hardcoded dropout, use the passed value
+        # Remove hardcoded dropout - passing the value from the constructor now
     
     def forward(self, data):
         x, edge_index = data.x, data.edge_index

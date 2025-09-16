@@ -156,7 +156,7 @@ def analyze_attrition_patterns(cur):
     """)
     
     dept_stats = cur.fetchall()
-    print("\nDepartment-wise Attrition:")
+    print("\n Department-wise Attrition:")
     print(tabulate(dept_stats,
                   headers=["Department", "Total", "Current", "Former", "Avg Tenure", "Turnover Rate (%)"],
                   tablefmt="grid"))
@@ -166,7 +166,7 @@ def analyze_attrition_patterns(cur):
     former = next(stat for stat in status_stats if stat[0] == 'Former')
     total = current[1] + former[1]
     
-    print("\nKey Metrics:")
+    print("\n Key Metrics:")
     print(f"  • Overall Turnover Rate: {(former[1]/total*100):.1f}%")
     print(f"  • Average Tenure at Exit: {np.mean([stat[3] for stat in yearly_stats]):.1f} years")
     print(f"  • Most Affected Department: {dept_stats[0][0]} ({dept_stats[0][5]:.1f}% turnover)")
@@ -195,7 +195,7 @@ def analyze_temporal_distribution(cur, output_dir):
     """)
     emp_range = cur.fetchone()
     
-    print("\nEmployment Timeline:")
+    print("\n Employment Timeline:")
     print(f"  • Data Range: {emp_range[0]} to {emp_range[1]}")
     print(f"  • Total Employment Records: {emp_range[2]:,}")
     print(f"  • Unique Employees: {emp_range[3]:,}")
@@ -322,7 +322,7 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.savefig(os.path.join(output_dir, 'employment_duration.png'))
     plt.close()
     
-    print("\nEmployment Duration Statistics:")
+    print("\n Employment Duration Statistics:")
     # Calculate weighted average
     avg_duration = np.average(duration_dist['years'], weights=duration_dist['count'])
     
@@ -499,7 +499,7 @@ def save_analysis_summary(output_dir, content):
     summary_file = os.path.join(output_dir, "analysis_summary.txt")
     with open(summary_file, 'w') as f:
         f.write(content)
-    print(f"📝 Analysis summary saved to: {summary_file}")
+    print(f"Analysis summary saved to: {summary_file}")
 
 def main():
     """Run comprehensive data analysis"""
@@ -548,7 +548,7 @@ def main():
         output_dir = os.path.join(output_base, f"data_analysis_{timestamp}")
         os.makedirs(output_dir, exist_ok=True)
         
-        print(f"\nOutput will be saved to: {output_dir}")
+        print(f"\n📁 Output will be saved to: {output_dir}")
         
         # Connect to database
         conn = connect_to_db()
@@ -623,9 +623,9 @@ def main():
         save_analysis_summary(output_dir, output_content)
         
         # Print final messages to actual stdout
-        print("\nAnalysis complete!")
-        print(f"Results saved to: {output_dir}")
-        print(f"View the full report at: {os.path.join(output_dir, f'eda_report_{viz.timestamp}.html')}")
+        print("\n✨ Analysis complete!")
+        print(f"📁 Results saved to: {output_dir}")
+        print(f"📊 View the full report at: {os.path.join(output_dir, f'eda_report_{viz.timestamp}.html')}")
         
     finally:
         if conn:

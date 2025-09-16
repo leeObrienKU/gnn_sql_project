@@ -56,7 +56,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     except Exception:
         scheduler = None
 
-    # Optional: class-weighted loss for imbalanced tasks
+   
     class_weight = None
     try:
         if use_class_weights and getattr(data, "task", None) == "attrition":
@@ -88,7 +88,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     
     # Initialize validation accuracy smoothing
     val_acc_window = []
-    smoothing_window = 3  # Number of epochs to average over
+    smoothing_window = 3  # Number of epochs to average over I did this to smooth the curves in visaual
 
     for epoch in range(1, epochs + 1):
         model.train()
