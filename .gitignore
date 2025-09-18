@@ -23,4 +23,4 @@ env/
 wandb/
 
 # Database
-*.dump
+*.dumpCODE_DOCUMENTATION.md
