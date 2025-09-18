@@ -18,7 +18,15 @@ from utils.graph_builder import create_graph
 from models.gnn_model import GNN
 from models.trainer import train_and_evaluate
 
-# Weights & Biases (optional)
+# https://github.com/snap-stanford/relbench used for reference code throughout the project
+# https://github.com/snap-stanford/relbench/blob/main/relbench/modeling/graph.py
+# https://github.com/snap-stanford/relbench/blob/main/relbench/modeling/loader.py
+# https://github.com/sailab-code/gnn/blob/master/GNN.py
+# https://github.com/chaitjo/efficient-gnns/blob/main/ppi_pyg/scripts/run.sh
+# 
+
+
+# Weights & Biases - this helped me with tracking and visuals ( did not use in final report)
 try:
     import wandb
     _WANDB_AVAILABLE = True
@@ -29,12 +37,12 @@ except Exception:
 def main():
     parser = argparse.ArgumentParser(description='GNN Employee Database Training')
     
-    # Model selection
+    # model selection from the script files 
     parser.add_argument('--model', type=str, default='GCN',
                         choices=['GCN', 'GAT', 'GraphSAGE'],
                         help='Type of GNN model')
     
-    # Original parameters
+    #  parameters
     parser.add_argument('--epochs', type=int, default=50,
                         help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=1024,
@@ -89,10 +97,10 @@ def main():
     
     args = parser.parse_args()
     
-    # Initialize logging
+    #  logging
     logger = ExperimentLogger()
     
-    # W&B setup
+    # w&b setup
     if args.wandb and _WANDB_AVAILABLE:
         api_key = args.wandb_api_key or os.environ.get('WANDB_API_KEY')
         if api_key:
@@ -107,11 +115,11 @@ def main():
     # Log parameters
     logger.log_params(vars(args))
     
-    # Load data
+    # need some data to make the magic happen
     print("\nLoading and preparing data...")
     employees, departments, dept_emp, dept_manager, titles, salaries = load_employees_db()
     
-    # Build graph
+    # build graph
     print("\nBuilding graph...")
     data = create_graph(
         employees=employees,
@@ -125,7 +133,7 @@ def main():
         use_all_history_edges=not args.current_edges_only
     )
     
-    # Create appropriate model
+    # create appropriate model
     input_dim = data.x.shape[1]
     num_classes = data.num_classes
     
@@ -139,7 +147,7 @@ def main():
         num_heads=args.num_heads
     )
     
-    # Enable W&B parameter tracking after model creation
+
     if logger.wandb_run is not None:
         try:
             wandb.watch(model, log="all", log_freq=100)  # Log gradients and parameters
@@ -157,7 +165,7 @@ def main():
         shuffle=True
     )
     
-    # Train and evaluate
+    # train and evaluate
     threshold_mode = args.threshold_mode or ('max_f1' if args.auto_threshold else 'fixed')
     test_acc = train_and_evaluate(
         model=model,
@@ -178,14 +186,14 @@ def main():
         use_class_weights=args.class_weights
     )
     
-    # Save plots
+    # plots
     out_dir = logger.log_dir
     plot_training_curves(logger.metrics["training"], out_dir)
     cm = np.array(logger.metrics.get("confusion_matrix", [[0, 0], [0, 0]]))
     class_names = ["Stay", "Leave"]
     cm_path, cm_norm_path = plot_confusion_matrix(cm, class_names, os.path.join(out_dir, "confusion_matrix.png"))
     
-    # Log to W&B
+    # log
     if logger.wandb_run is not None:
         try:
             logger.wandb_run.log({
@@ -198,7 +206,7 @@ def main():
         except Exception:
             pass
     
-    # Finalize
+   
     logger.finalize(
         test_acc=test_acc,
         model_summary={

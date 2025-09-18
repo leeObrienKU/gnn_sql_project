@@ -5,10 +5,10 @@ from sqlalchemy.exc import SQLAlchemyError
 def load_employees_db():
     """Load data from PostgreSQL with schema-aligned column names"""
     try:
-        # Create SQLAlchemy engine
+        
         engine = create_engine('postgresql+psycopg2://postgres@/empdb?host=/var/run/postgresql')
 
-        # Define queries matching your actual schema
+        #  queries  schema
         queries = {
             'employees': """
                 SELECT 
@@ -60,7 +60,7 @@ def load_employees_db():
             """
         }
 
-        # Execute queries
+        
         data = {}
         for name, query in queries.items():
             try:
@@ -71,7 +71,7 @@ def load_employees_db():
                 print(f"couldn't load {name}: {str(e)}")
                 data[name] = pd.DataFrame(columns=query.split('SELECT ')[1].split('FROM')[0].replace('\n', '').replace(' ', '').split(','))
 
-        # Debug output
+    
         print("\n loaded Data Summary:")
         for name, df in data.items():
             print(f"{name:12s}: {df.shape[0]:6d} rows | Columns: {list(df.columns)}")
