@@ -1,4 +1,23 @@
 # models/trainer.py
+# Generative AI prompt reference :
+
+# O’Brien, Lee. (2025). “Create a comprehensive evaluation setup for attrition
+# GNNs: accuracy, F1, ROC-AUC, PR-AUC, and confusion matrices —handle 
+# class imbalance and compare architectures.”
+# [Research prompt; via Cursor; claude-monnet.3.7].
+
+# O’Brien, Lee. (2025). “Produce a sample hyperparameter search script for GNNs 
+# (learning rate, hidden dimensions, number of layers, dropout, attention heads)
+# that’s reproducible and resists overfitting.”
+# [Research prompt; via Cursor; claude-monnet.3.7].
+
+# O’Brien, Lee. (2025). “Show me how to implement and compare 
+# learning-rate schedulers (exponential decay, step decay, cosine annealing)
+# for GCN, GAT, and GraphSAGE.”
+# [Research prompt; via Cursor; claude-monnet.3.7].
+
+
+
 import time
 import os
 import numpy as np
@@ -46,7 +65,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     data = data.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-5)
-    # Learning rate scheduler (optional)
+    #learning rate scheduler (optional)
     scheduler = None
     try:
         if lr_decay_type == "exponential":
@@ -86,7 +105,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
     best_state = None
     wait = 0
     
-    # Initialize validation accuracy smoothing
+    #  validation accuracy smoothing
     val_acc_window = []
     smoothing_window = 3  # Number of epochs to average over I did this to smooth the curves in visaual
 
@@ -100,7 +119,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             batch = batch.to(device)
             optimizer.zero_grad()
             out = model(batch)  # logits on the sampled subgraph
-            # Only use nodes within the batch that are in global train_mask and have labels
+            # only use nodes within the batch that are in global train_mask and have labels
             y = batch.y.view(-1)
             if hasattr(batch, "train_mask"):
                 mask = batch.train_mask
@@ -135,7 +154,7 @@ def train_and_evaluate(model, data, train_loader, epochs, lr, logger, pos_thresh
             val_acc_window.pop(0)
         smoothed_val_acc = sum(val_acc_window) / len(val_acc_window)
 
-        # Log both raw and smoothed metrics
+        # Log both raw and smoothed metrics - this is for optics - the curves a jagged
         logger.log_metrics(epoch, epoch_loss, smoothed_val_acc, optimizer.param_groups[0]["lr"], 
                          val_f1=val_f1, raw_val_acc=val_acc)
 

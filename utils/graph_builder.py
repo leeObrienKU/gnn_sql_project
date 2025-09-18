@@ -1,3 +1,13 @@
+# utils/graph_builder.py
+# Generative AI prompt reference :
+# O’Brien, Lee. (2025). “Tell me how to handle severe class imbalance in attrition using 
+# class weights, focal loss, and related techniques—without collapsing to the majority class.”
+# [Research prompt; via Cursor; claude-monnet.3.7].
+
+
+
+
+
 import pandas as pd
 import numpy as np
 import torch
@@ -20,7 +30,7 @@ def get_latest_by(df, by_cols, sort_cols, keep_cols):
     """Get the latest record for each group, avoiding column duplication"""
     # Make sure by_cols are not in keep_cols to avoid duplication
     keep_cols_unique = [col for col in keep_cols if col not in by_cols]
-    # Get the latest records
+    #  latest records
     latest = df.sort_values(sort_cols).groupby(by_cols)[keep_cols_unique].last()
     # Only reset_index if we have by_cols that aren't in the result
     if any(col not in keep_cols_unique for col in by_cols):
@@ -53,7 +63,7 @@ def create_graph(
     """
     print("\nCreating graph...")
     
-    # Calculate employee features
+    # calc employee features
     ref_date = pd.to_datetime(cutoff_date)
     employees = employees.copy()
     employees['birth_date'] = pd.to_datetime(employees['birth_date'])
@@ -62,7 +72,7 @@ def create_graph(
     employees['age_years'] = (ref_date - employees['birth_date']).dt.days / 365.25
     employees['tenure_years'] = (ref_date - employees['hire_date']).dt.days / 365.25
     
-    # Get latest salary
+    #  latest salary
     print("Processing salary data...")
     latest_salary = get_latest_by(
         salaries,
@@ -71,7 +81,7 @@ def create_graph(
         keep_cols=['emp_no', 'salary']
     ).rename(columns={'salary': 'curr_salary'})
     
-    # Get latest department
+    # latest department
     print("Processing department data...")
     latest_dept = get_latest_by(
         dept_emp,
@@ -80,7 +90,7 @@ def create_graph(
         keep_cols=['emp_no', 'dept_no']
     )
     
-    # Get latest title
+    # get latest title
     print("Processing title data...")
     latest_title = get_latest_by(
         titles,
@@ -90,7 +100,7 @@ def create_graph(
     )
     latest_title['title_code'] = latest_title['title'].astype('category').cat.codes
     
-    # Calculate salary growth
+    # calc salary growth
     print("Calculating salary growth...")
     salary_growth = salaries.groupby('emp_no').agg(
         salary_growth=pd.NamedAgg(
@@ -99,7 +109,7 @@ def create_graph(
         )
     ).reset_index()
     
-    # Assemble features
+    # assmeble features
     print("Assembling features...")
     emp_feat = employees[['emp_no', 'age_years', 'tenure_years']].copy()
     emp_feat = emp_feat.merge(latest_salary[['emp_no', 'curr_salary']], on='emp_no', how='left')
@@ -107,11 +117,11 @@ def create_graph(
     emp_feat = emp_feat.merge(latest_title[['emp_no', 'title_code']], on='emp_no', how='left')
     emp_feat = emp_feat.merge(latest_dept[['emp_no', 'dept_no']], on='emp_no', how='left')
     
-    # Fill missing values
+    # fill missing values # EDA showd no missing values , but good practice
     numeric_cols = ['age_years', 'tenure_years', 'curr_salary', 'salary_growth', 'title_code']
     emp_feat[numeric_cols] = emp_feat[numeric_cols].fillna(0.0)
     
-    # Create department one-hot encoding
+    #  department one-hot encoding
     print("Creating department encoding...")
     dept_list = sorted(departments['dept_no'].unique())
     dept_to_idx = {dept: idx for idx, dept in enumerate(dept_list)}
@@ -121,11 +131,11 @@ def create_graph(
         if pd.notna(dept) and dept in dept_to_idx:
             dept_onehot[i, dept_to_idx[dept]] = 1.0
     
-    # Standardize numeric features
+    # standardize numeric features
     print("Standardizing features...")
     emp_feat_std = standardize(emp_feat[numeric_cols], numeric_cols)
     
-    # Final features
+    # final features
     emp_features = np.hstack([
         emp_feat_std.values,
         dept_onehot
@@ -137,14 +147,14 @@ def create_graph(
     # Set one-hot part of department features
     dept_features[:, -len(dept_list):] = np.eye(len(dept_list))
     
-    # Combine features
+    # combine features
     x = torch.from_numpy(np.vstack([emp_features, dept_features])).contiguous()
     
-    # Create edges
+    # create edges
     print("\nCreating edges...")
     edge_list = []
     
-    # Employee-Department edges
+    # employee-Department edges
     for emp_idx, (_, row) in enumerate(latest_dept.iterrows()):
         if pd.notna(row['dept_no']) and row['dept_no'] in dept_to_idx:
             dept_idx = dept_to_idx[row['dept_no']] + len(emp_feat)  # offset for department nodes
@@ -156,7 +166,7 @@ def create_graph(
     else:
         edge_index = torch.zeros((2, 0), dtype=torch.long).contiguous()
     
-    # Create labels
+    # create labels
     print("\nCreating labels...")
     cutoff = pd.to_datetime(cutoff_date)
     latest_emp = get_latest_by(
@@ -166,14 +176,14 @@ def create_graph(
         keep_cols=['emp_no', 'to_date']
     )
     
-    # Employee labels (1 = left before cutoff)
+    # employee labels (1 = left before cutoff)
     labels = torch.zeros(len(emp_feat) + len(dept_list), dtype=torch.long).contiguous()
     for idx, (_, row) in enumerate(latest_emp.iterrows()):
         if str(row['to_date']) != '9999-01-01':
             if pd.to_datetime(row['to_date']) < cutoff:
                 labels[idx] = 1
     
-    # Create train/val/test split
+    # train/val/test split
     print("\nCreating data splits...")
     num_nodes = len(emp_feat)  # only split employees
     perm = torch.randperm(num_nodes)
@@ -190,13 +200,13 @@ def create_graph(
     val_mask[val_idx] = True
     test_mask[test_idx] = True
     
-    # Create graph
+    # create graph
     data = Data(x=x, edge_index=edge_index, y=labels)
     data.train_mask = train_mask
     data.val_mask = val_mask
     data.test_mask = test_mask
     
-    # Add metadata
+    # add metadata
     data.num_employees = len(emp_feat)
     data.num_departments = len(dept_list)
     data.num_classes = 2  # binary classification

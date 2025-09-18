@@ -19,7 +19,7 @@ def plot_training_curves(training_log, out_dir):
     val_acc = [e["val_acc"] for e in training_log]  # This is now the smoothed accuracy
     raw_val_acc = [e.get("raw_val_acc", e["val_acc"]) for e in training_log]  # Get raw if available
     
-    # Loss curve
+    # loss curve
     plt.figure(figsize=(10, 6))
     plt.plot(epochs, train_loss, label="Train Loss", color='#2ecc71')
     plt.xlabel("Epoch")
@@ -69,7 +69,7 @@ def plot_confusion_matrix(cm, class_names, out_path, normalize=False):
     plt.savefig(out_path)
     plt.close()
     
-    # Create normalized confusion matrix
+    # Create normalized confusion matrix easier to read
     cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     norm_path = out_path.replace('.png', '_normalized.png')
     

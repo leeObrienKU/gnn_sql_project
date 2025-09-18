@@ -1,3 +1,11 @@
+# utils/experiment_logger.py
+# Generative AI prompt reference :
+# O’Brien, Lee. (2025). “Create a regularization plan for GNNs: early stopping, dropout, and 
+# continuous validation monitoring to balance capacity and generalization.”
+# [Research prompt; via Cursor; claude-monnet.3.7].
+
+
+
 import os
 import json
 import time
@@ -11,7 +19,7 @@ class ExperimentLogger:
         self.base_dir = "experiment_logs"
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Create experiment directory with timestamp
+        # make experiment directory with timestamp
         self.experiment_id = None  # Will be set when model type is known
         self.log_dir = None  # Will be set when model type is known
         os.makedirs(self.base_dir, exist_ok=True)
@@ -43,15 +51,15 @@ class ExperimentLogger:
         """Log experiment parameters"""
         self.params = params
         
-        # Setup directories now that we know the model type
+        
         self._setup_directories(params['model'])
         
-        # Save parameters to file
+        
         params_file = os.path.join(self.log_dir, "parameters.json")
         with open(params_file, 'w') as f:
             json.dump(params, f, indent=2)
         
-        # Print parameters
+     
         print(f"\nExperiment Parameters:")
         for k, v in params.items():
             print(f"{k:>20}: {v}")
@@ -75,12 +83,12 @@ class ExperimentLogger:
         
         self.metrics["training"].append(entry)
         
-        # Save current training metrics
+       
         metrics_file = os.path.join(self.metrics_dir, "training_metrics.json")
         with open(metrics_file, 'w') as f:
             json.dump(self.metrics["training"], f, indent=2)
         
-        # Print metrics (show both raw and smoothed if available)
+        
         if raw_val_acc is not None:
             print(f"Epoch {epoch:03d} | Loss: {train_loss:.4f} | Raw Acc: {raw_val_acc:.4f} | Smoothed Acc: {val_acc:.4f} | LR: {lr:.6f}")
         else:
@@ -110,7 +118,7 @@ class ExperimentLogger:
         self.metrics["confusion_matrix"] = cm.tolist()
         self.metrics["class_names"] = class_names
         
-        # Save confusion matrix
+       
         cm_file = os.path.join(self.metrics_dir, "confusion_matrix.json")
         with open(cm_file, 'w') as f:
             json.dump({
@@ -131,7 +139,7 @@ class ExperimentLogger:
         self.metrics["runtime_seconds"] = runtime
         self.metrics["model_summary"] = model_summary
         
-        # Create performance summary
+       
         self.performance_summary = {
             "model_type": model_summary["type"],
             "timestamp": self.timestamp,
@@ -143,7 +151,7 @@ class ExperimentLogger:
             "epochs": len(self.metrics["training"])
         }
         
-        # Save all metrics
+      
         metrics_file = os.path.join(self.log_dir, "experiment_metrics.json")
         with open(metrics_file, 'w') as f:
             json.dump({
@@ -151,7 +159,7 @@ class ExperimentLogger:
                 "metrics": self.metrics
             }, f, indent=2)
         
-        # Save performance summary
+       
         summary_file = os.path.join(self.metrics_dir, f"performance_{self.timestamp}.txt")
         with open(summary_file, 'w') as f:
             f.write(f"Performance Summary for {self.experiment_id}\n")
@@ -159,7 +167,7 @@ class ExperimentLogger:
             for k, v in self.performance_summary.items():
                 f.write(f"{k:.<40} {v}\n")
             
-            # Add confusion matrix if available
+           
             if self.metrics["confusion_matrix"] is not None:
                 f.write("\nConfusion Matrix:\n")
                 cm = np.array(self.metrics["confusion_matrix"])
@@ -167,7 +175,7 @@ class ExperimentLogger:
                 f.write("\nClass names: " + ", ".join(class_names) + "\n")
                 f.write("\n" + str(cm) + "\n")
                 
-                # Calculate additional metrics
+                # calc additional metrics
                 if cm.shape == (2, 2):  # Binary classification
                     tn, fp, fn, tp = cm.ravel()
                     precision = tp / (tp + fp) if (tp + fp) > 0 else 0
@@ -179,7 +187,7 @@ class ExperimentLogger:
                     f.write(f"Recall: {recall:.4f}\n")
                     f.write(f"F1 Score: {f1:.4f}\n")
         
-        # Update master results file
+        # update master results file
         master_file = os.path.join(self.base_dir, "all_experiments.csv")
         df_row = pd.DataFrame([self.performance_summary])
         if os.path.exists(master_file):

@@ -3,7 +3,12 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATConv, SAGEConv
 
 # used for reference code https://github.com/sailab-code/gnn/blob/master/GNN.py
+# https://github.com/topics/gnn
 
+# generative ai prompt reference :
+#O’Brien, Lee. (2025). “Create a regularisation plan for GNNs: early stopping, dropout, and continuous
+# validation monitoring to balance capacity and generalisation.” 
+# [Research prompt; via Cursor; claude-monnet.3.7].
 
 class GNN(torch.nn.Module):
     def __init__(self, model_type='GCN', input_dim=4, hidden_dim=64, output_dim=2, num_layers=2, dropout=0.5, num_heads=4):

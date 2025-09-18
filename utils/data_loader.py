@@ -1,3 +1,10 @@
+# generative ai prompt reference :
+#O’Brien, Lee. (2025). “Show me how to convert relational HR tables 
+#(employees, departments, titles, salaries) into a graph suitable for GNN training.” 
+#[Research prompt; via Cursor; claude-monnet.3.7].
+
+
+
 from sqlalchemy import create_engine
 import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError

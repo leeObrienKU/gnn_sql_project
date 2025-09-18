@@ -18,11 +18,18 @@ from utils.graph_builder import create_graph
 from models.gnn_model import GNN
 from models.trainer import train_and_evaluate
 
+
+### references below ### 
+# code and references used for this project
 # https://github.com/snap-stanford/relbench used for reference code throughout the project
 # https://github.com/snap-stanford/relbench/blob/main/relbench/modeling/graph.py
 # https://github.com/snap-stanford/relbench/blob/main/relbench/modeling/loader.py
 # https://github.com/sailab-code/gnn/blob/master/GNN.py
 # https://github.com/chaitjo/efficient-gnns/blob/main/ppi_pyg/scripts/run.sh
+#Generative AI prompt reference :
+# O’Brien, Lee. (2025). “Tell me how to structure a scalable, reproducible GNN attrition project 
+# from SQL data (supporting GCN, GAT, GraphSAGE) with end-to-end experiment logging.” 
+# [Research prompt; via Cursor; claude-monnet.3.7].
 # 
 
 

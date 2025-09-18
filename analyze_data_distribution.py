@@ -12,7 +12,7 @@ from utils.eda_visualizer import EDAVisualizer
 def connect_to_db():
     """Establish database connection"""
     try:
-        # Try different connection options
+        # not sure how the examimer wil run this , but good practice
         connection_params = [
             {
                 'dbname': 'empdb',
@@ -58,7 +58,7 @@ def analyze_attrition_patterns(cur):
     print("ATTRITION ANALYSIS")
     print("=" * 80)
     
-    # Get overall employment status
+    # get overall employment status
     cur.execute("""
         WITH latest_dept AS (
             SELECT 
@@ -94,7 +94,7 @@ def analyze_attrition_patterns(cur):
                           "Male", "Female", "Male %"],
                   tablefmt="grid"))
     
-    # Get attrition patterns by year
+    # get attrition patterns by year
     cur.execute("""
         WITH yearly_stats AS (
             SELECT 
@@ -127,7 +127,7 @@ def analyze_attrition_patterns(cur):
                   headers=["Year", "Leavers", "Depts Affected", "Avg Tenure", "Attrition Rate (%)"],
                   tablefmt="grid"))
     
-    # Get department-wise patterns
+    # get department-wise patterns
     cur.execute("""
         WITH dept_stats AS (
             SELECT 
@@ -161,7 +161,7 @@ def analyze_attrition_patterns(cur):
                   headers=["Department", "Total", "Current", "Former", "Avg Tenure", "Turnover Rate (%)"],
                   tablefmt="grid"))
     
-    # Calculate overall metrics
+    # calculate overall metrics
     current = next(stat for stat in status_stats if stat[0] == 'Current')
     former = next(stat for stat in status_stats if stat[0] == 'Former')
     total = current[1] + former[1]
@@ -180,10 +180,10 @@ def analyze_temporal_distribution(cur, output_dir):
     print("TEMPORAL DISTRIBUTION ANALYSIS")
     print("=" * 80)
     
-    # Create figure for temporal distributions
+    # create figure for temporal distributions
     plt.figure(figsize=(15, 10))
     
-    # 1. Employment periods
+    # 1. employment periods
     cur.execute("""
         SELECT 
             MIN(from_date) as earliest_start,
@@ -201,7 +201,7 @@ def analyze_temporal_distribution(cur, output_dir):
     print(f"  • Unique Employees: {emp_range[3]:,}")
     print(f"  • Current Employees: {emp_range[4]:,}")
     
-    # Get yearly distribution of employment starts and ends
+    # get yearly distribution of employment starts and ends
     cur.execute("""
         SELECT 
             EXTRACT(YEAR FROM from_date) as year,
@@ -213,7 +213,7 @@ def analyze_temporal_distribution(cur, output_dir):
     """)
     yearly_emp = pd.DataFrame(cur.fetchall(), columns=['year', 'starts', 'ends'])
     
-    # Plot employment distribution
+    # plot employment distribution
     plt.subplot(2, 2, 1)
     plt.plot(yearly_emp['year'], yearly_emp['starts'], label='New Employments')
     plt.plot(yearly_emp['year'], yearly_emp['ends'], label='Terminations')
@@ -223,7 +223,7 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.legend()
     plt.grid(True)
     
-    # 2. Salary changes
+    # salary changes
     cur.execute("""
         SELECT 
             EXTRACT(YEAR FROM from_date) as year,
@@ -243,7 +243,7 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.ylabel('Average Salary')
     plt.grid(True)
     
-    # 3. Department transfers
+    # department transfers
     cur.execute("""
         WITH transfers AS (
             SELECT 
@@ -271,7 +271,7 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.ylabel('Number of Transfers')
     plt.grid(True)
     
-    # 4. Title changes
+    # title changes
     cur.execute("""
         SELECT 
             EXTRACT(YEAR FROM from_date) as year,
@@ -294,7 +294,7 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.savefig(os.path.join(output_dir, 'temporal_distribution.png'))
     plt.close()
     
-    # Analyze employment duration patterns
+    # analyze employment duration patterns
     cur.execute("""
         WITH emp_duration AS (
             SELECT 
@@ -323,16 +323,16 @@ def analyze_temporal_distribution(cur, output_dir):
     plt.close()
     
     print("\n Employment Duration Statistics:")
-    # Calculate weighted average
+    # calculate weighted average
     avg_duration = np.average(duration_dist['years'], weights=duration_dist['count'])
     
-    # Calculate weighted median
+    # alculate weighted median
     cumsum = duration_dist['count'].cumsum()
     total = duration_dist['count'].sum()
     median_idx = duration_dist.index[cumsum >= total/2].min()
     median_duration = duration_dist.loc[median_idx, 'years']
     
-    # Get mode (most common)
+    # Get  (most common) mode
     mode_duration = duration_dist.loc[duration_dist['count'].idxmax(), 'years']
     
     print(f"  • Average Duration: {avg_duration:.1f} years")
@@ -345,7 +345,7 @@ def analyze_department_patterns(cur, output_dir):
     print("DEPARTMENT ANALYSIS")
     print("=" * 80)
     
-    # Department size and stability
+    # department size and stability
     cur.execute("""
         WITH dept_stats AS (
             SELECT 
@@ -377,10 +377,10 @@ def analyze_department_patterns(cur, output_dir):
     print("\nDepartment Statistics:")
     print(dept_stats.to_string(index=False))
     
-    # Plot department metrics
+    # plot department metrics
     plt.figure(figsize=(15, 10))
     
-    # Size comparison
+    # size comparison
     plt.subplot(2, 2, 1)
     plt.bar(dept_stats['Department'], dept_stats['Current'], label='Current')
     plt.bar(dept_stats['Department'], dept_stats['Former'], 
@@ -389,13 +389,13 @@ def analyze_department_patterns(cur, output_dir):
     plt.xticks(rotation=45)
     plt.legend()
     
-    # Turnover rate
+    # turnover rate
     plt.subplot(2, 2, 2)
     plt.bar(dept_stats['Department'], dept_stats['Turnover Rate'])
     plt.title('Department Turnover Rate (%)')
     plt.xticks(rotation=45)
     
-    # Average tenure
+    # average tenure
     plt.subplot(2, 2, 3)
     plt.bar(dept_stats['Department'], dept_stats['Avg Tenure'])
     plt.title('Average Employee Tenure (Years)')
@@ -411,7 +411,7 @@ def analyze_salary_patterns(cur, output_dir):
     print("SALARY ANALYSIS")
     print("=" * 80)
     
-    # Overall salary trends
+    # ovrla salary trends
     cur.execute("""
         WITH salary_changes AS (
             SELECT 
@@ -441,28 +441,28 @@ def analyze_salary_patterns(cur, output_dir):
     print("\nSalary Trend Statistics:")
     print(salary_trends.to_string(index=False))
     
-    # Plot salary metrics
+    # plot salary metrics
     plt.figure(figsize=(15, 10))
     
-    # Average salary trend
+    # avg salary trend
     plt.subplot(2, 2, 1)
     plt.plot(salary_trends['Year'], salary_trends['Avg Salary'])
     plt.title('Average Salary Over Time')
     plt.grid(True)
     
-    # Average increase percentage
+    # avg increase percentage
     plt.subplot(2, 2, 2)
     plt.plot(salary_trends['Year'], salary_trends['Avg Increase %'])
     plt.title('Average Salary Increase (%)')
     plt.grid(True)
     
-    # Number of employees with changes
+    # nbr of employees with changes
     plt.subplot(2, 2, 3)
     plt.plot(salary_trends['Year'], salary_trends['Employees Changed'])
     plt.title('Employees with Salary Changes')
     plt.grid(True)
     
-    # Average changes per employee
+    # avg changes per employee
     plt.subplot(2, 2, 4)
     plt.plot(salary_trends['Year'], salary_trends['Avg Changes/Employee'])
     plt.title('Average Salary Changes per Employee')
@@ -507,26 +507,26 @@ def main():
     import sys
     from io import StringIO
     
-    # Store original stdout
+    # store original stdout
     original_stdout = sys.stdout
     output_capture = StringIO()
     sys.stdout = output_capture
     
     try:
-        # Check requirements first
+        # check r
         check_requirements()
         
-        # Create output directory
+        # create output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Try several possible output locations
+        # try  possible output locations
         possible_dirs = [
             os.path.join(os.getcwd(), "experiment_logs"),  # Current directory
             "/content/experiment_logs",                     # Colab root
             "/tmp/experiment_logs"                         # Fallback to /tmp
         ]
         
-        # Find first writable directory
+        # find first writable directory
         output_base = None
         for d in possible_dirs:
             try:
@@ -544,13 +544,13 @@ def main():
         if output_base is None:
             raise RuntimeError("Could not find a writable directory for output")
         
-        # Create analysis-specific directory
+        # create analysis-specific directory
         output_dir = os.path.join(output_base, f"data_analysis_{timestamp}")
         os.makedirs(output_dir, exist_ok=True)
         
         print(f"\n📁 Output will be saved to: {output_dir}")
         
-        # Connect to database
+        # connect to database
         conn = connect_to_db()
         if not conn:
             raise RuntimeError("Failed to connect to database")
@@ -559,10 +559,10 @@ def main():
         print("Connected to PostgreSQL")
         print("Running comprehensive data analysis...\n")
         
-        # Initialize visualizer
+        # initialize visualizer
         viz = EDAVisualizer(output_dir)
         
-        # Get table counts
+        # get table counts
         tables_info = {}
         for table in ['employee', 'department', 'department_employee', 
                      'department_manager', 'salary', 'title']:
@@ -571,15 +571,15 @@ def main():
             tables_info[table] = {'count': count}
             print(f"{table}: {count:,} records")
         
-        # Create entity relationship diagram
+        # create entity relationship diagram
         viz.plot_entity_relationships(tables_info)
         
-        # Run analyses
+        # run analyses
         analyze_temporal_distribution(cur, output_dir)
         analyze_department_patterns(cur, output_dir)
         analyze_salary_patterns(cur, output_dir)
         
-        # Analyze attrition patterns
+        # Analyse attrition patterns
         current, former, status_stats, yearly_stats, dept_stats = analyze_attrition_patterns(cur)
         
         # Plot attrition patterns
@@ -608,21 +608,22 @@ def main():
                                   columns=['employee_id', 'tenure_years', 'salary', 
                                          'title_duration', 'year'])
         
-        # Create correlation matrix
+        # create correlation matrix
         viz.plot_correlation_matrix(feature_data)
         
-        # Check for missing data
+        # check for missing data
         viz.plot_missing_data(feature_data)
         
-        # Create HTML report
+        # create HTML report
         viz.create_html_report(f"Employee Data Analysis Report ({datetime.now().strftime('%Y-%m-%d')})")
         
-        # Save captured output
+        # c
+        # save captured output
         sys.stdout = original_stdout
         output_content = output_capture.getvalue()
         save_analysis_summary(output_dir, output_content)
         
-        # Print final messages to actual stdout
+        #print final messages to actual stdout
         print("Analysis complete!")
         print(f"Results saved to: {output_dir}")
         print(f"View the full report at: {os.path.join(output_dir, f'eda_report_{viz.timestamp}.html')}")
